@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>営業報告ビジュアライザー</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0a1628;
+  --navy2: #132240;
+  --blue: #1a5fa8;
+  --blue2: #2176d2;
+  --sky: #38b6ff;
+  --teal: #00d4aa;
+  --gold: #f5a623;
+  --red: #e8394d;
+  --green: #22c55e;
+  --white: #ffffff;
+  --gray: #8fa3be;
+  --gray2: #c8d9ed;
+  --bg: #06101e;
+  --card: #0f1e36;
+  --card2: #162845;
+  --border: rgba(56,182,255,0.15);
+  --glow: 0 0 20px rgba(56,182,255,0.2);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+}
+
+/* ヘッダー */
+header {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo-mark {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--blue), var(--sky));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700; font-size: 16px; color: white;
+}
+.header-title { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; }
+.header-sub { font-size: 11px; color: var(--gray); margin-top: 2px; }
+.header-period { margin-left: auto; font-size: 13px; color: var(--sky); font-weight: 500; }
+
+/* タブ */
+.tabs {
+  display: flex;
+  background: var(--navy2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  gap: 4px;
+}
+.tab {
+  padding: 14px 24px;
+  border: none; background: transparent;
+  color: var(--gray);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--white); }
+.tab.active { color: var(--sky); border-bottom-color: var(--sky); }
+.tab-badge {
+  display: inline-block;
+  background: var(--blue);
+  color: white;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* メインコンテンツ */
+main { padding: 32px; max-width: 1400px; margin: 0 auto; }
+
+/* ドロップゾーン */
+.drop-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.drop-zone {
+  background: var(--card);
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.drop-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(56,182,255,0.03));
+  pointer-events: none;
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--sky);
+  background: rgba(56,182,255,0.08);
+  box-shadow: var(--glow);
+}
+.drop-zone.loaded { border-color: var(--teal); border-style: solid; }
+.drop-icon { font-size: 28px; margin-bottom: 8px; }
+.drop-label { font-size: 12px; font-weight: 700; color: var(--gray2); margin-bottom: 4px; }
+.drop-hint { font-size: 11px; color: var(--gray); }
+.drop-filename { font-size: 11px; color: var(--teal); margin-top: 6px; font-weight: 500; }
+input[type=file] { display: none; }
+
+/* サマリーカード */
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.kpi-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--blue), var(--sky));
+}
+.kpi-card.green::after { background: linear-gradient(90deg, #16a34a, var(--teal)); }
+.kpi-card.red::after { background: linear-gradient(90deg, #b91c1c, var(--red)); }
+.kpi-card.gold::after { background: linear-gradient(90deg, #92400e, var(--gold)); }
+.kpi-label { font-size: 11px; color: var(--gray); margin-bottom: 6px; }
+.kpi-val { font-family: 'Oswald', sans-serif; font-size: 28px; font-weight: 600; line-height: 1; }
+.kpi-sub { font-size: 11px; color: var(--gray); margin-top: 4px; }
+.kpi-diff { font-size: 12px; font-weight: 600; margin-top: 2px; }
+.kpi-diff.pos { color: var(--teal); }
+.kpi-diff.neg { color: var(--red); }
+
+/* テーブル */
+.section-title {
+  font-size: 14px; font-weight: 700;
+  color: var(--sky);
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title::before {
+  content: '';
+  display: block;
+  width: 4px; height: 16px;
+  background: var(--sky);
+  border-radius: 2px;
+}
+
+.table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+table { width: 100%; border-collapse: collapse; }
+th {
+  background: var(--navy2);
+  padding: 10px 14px;
+  font-size: 11px; font-weight: 700;
+  color: var(--gray2);
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+th:first-child { text-align: left; }
+td {
+  padding: 9px 14px;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  text-align: right;
+  white-space: nowrap;
+}
+td:first-child { text-align: left; font-weight: 500; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(56,182,255,0.04); }
+
+.rank-num {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  font-size: 11px; font-weight: 700;
+  margin-right: 6px;
+}
+.rank-1 { background: linear-gradient(135deg, #f5a623, #e8831a); color: #000; }
+.rank-2 { background: linear-gradient(135deg, #a0aec0, #718096); color: #000; }
+.rank-3 { background: linear-gradient(135deg, #c47b30, #a0522d); color: #fff; }
+.rank-other { background: var(--card2); color: var(--gray); }
+
+.tag-over { color: var(--teal); font-weight: 700; }
+.tag-under { color: var(--red); font-weight: 700; }
+.tag-near { color: var(--gold); font-weight: 600; }
+
+/* グラフエリア */
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+}
+.chart-card.wide { grid-column: span 2; }
+.chart-title { font-size: 12px; font-weight: 700; color: var(--gray2); margin-bottom: 16px; }
+.chart-wrap { position: relative; height: 220px; }
+
+/* 店舗別実績カード（スライド3） */
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.store-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.store-name { font-size: 13px; font-weight: 700; margin-bottom: 12px; }
+.store-month-label { font-size: 10px; color: var(--gray); margin-bottom: 4px; }
+.rate-bar-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.rate-bar-bg { flex: 1; height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden; }
+.rate-bar { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+.rate-val { font-size: 12px; font-weight: 700; width: 42px; text-align: right; }
+.rate-target { font-size: 10px; color: var(--gray); }
+.achieve-badge {
+  display: inline-block;
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px;
+  margin-left: 8px;
+}
+.achieve-over { background: rgba(34,197,94,0.2); color: var(--green); }
+.achieve-under { background: rgba(232,57,77,0.2); color: var(--red); }
+
+/* タブコンテンツ */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* 空状態 */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--gray);
+}
+.empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+.empty-text { font-size: 14px; }
+
+/* ハイライト行 */
+.row-highlight-top { background: rgba(34,197,94,0.06); }
+.row-highlight-bot { background: rgba(232,57,77,0.06); }
+
+/* スクロール */
+.table-scroll { overflow-x: auto; }
+
+/* ローディング */
+.loading-bar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--blue), var(--sky), var(--teal));
+  z-index: 9999;
+  display: none;
+  animation: progress 1.5s ease-in-out infinite;
+}
+@keyframes progress {
+  0% { width: 0; opacity: 1; }
+  50% { width: 70%; opacity: 1; }
+  100% { width: 100%; opacity: 0; }
+}
+
+/* 月選択 */
+.month-selector {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 20px;
+}
+.month-btn {
+  padding: 6px 14px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--gray);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 12px; cursor: pointer;
+  transition: all 0.2s;
+}
+.month-btn:hover { color: var(--white); border-color: var(--sky); }
+.month-btn.active { background: var(--blue); border-color: var(--blue2); color: white; }
+
+/* 区切り線 */
+.divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+/* ハイライトエリア */
+.highlight-box {
+  background: var(--card2);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex; gap: 32px; align-items: flex-start;
+}
+.highlight-group { }
+.highlight-group-title { font-size: 11px; color: var(--gray); margin-bottom: 6px; }
+.highlight-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.highlight-item {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 6px;
+}
+.hi-green { background: rgba(34,197,94,0.15); color: var(--green); }
+.hi-red { background: rgba(232,57,77,0.15); color: var(--red); }
+</style>
+</head>
+<body>
+<div class="loading-bar" id="loadingBar"></div>
+
+<header>
+  <div class="logo-mark">MCG</div>
+  <div>
+    <div class="header-title">営業報告ビジュアライザー</div>
+    <div class="header-sub">全社数値表 / 客層分析 / 各店予算</div>
+  </div>
+  <div class="header-period" id="headerPeriod">ファイルをドロップして開始</div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('slide1')">📊 スライド1：売上実績</button>
+  <button class="tab" onclick="switchTab('slide2')">👥 スライド2：契約種別</button>
+  <button class="tab" onclick="switchTab('slide3')">🏪 スライド3：店舗別目標</button>
+</div>
+
+<main>
+  <!-- ファイルドロップ -->
+  <div class="drop-section">
+    <div class="drop-zone" id="dz1" onclick="document.getElementById('f1').click()"
+         ondragover="onDragOver(event,'dz1')" ondragleave="onDragLeave('dz1')" ondrop="onDrop(event,'pdf')">
+      <div class="drop-icon">📄</div>
+      <div class="drop-label">全社数値表 PDF</div>
+      <div class="drop-hint">売上・反響・契約データ</div>
+      <div class="drop-filename" id="fn1">ドロップ or クリック</div>
+      <input type="file" id="f1" accept=".pdf" onchange="handleFile(event,'pdf')">
+    </div>
+    <div class="drop-zone" id="dz2" onclick="document.getElementById('f2').click()"
+         ondragover="onDragOver(event,'dz2')" ondragleave="onDragLeave('dz2')" ondrop="onDrop(event,'kyakuso')">
+      <div class="drop-icon">📊</div>
+      <div class="drop-label">客層分析表 Excel</div>
+      <div class="drop-hint">客層_2026.xlsm</div>
+      <div class="drop-filename" id="fn2">ドロップ or クリック</div>
+      <input type="file" id="f2" accept=".xlsx,.xlsm,.xls" onchange="handleFile(event,'kyakuso')">
+    </div>
+    <div class="drop-zone" id="dz3" onclick="document.getElementById('f3').click()"
+         ondragover="onDragOver(event,'dz3')" ondragleave="onDragLeave('dz3')" ondrop="onDrop(event,'yosan')">
+      <div class="drop-icon">🏪</div>
+      <div class="drop-label">各店予算シート Excel</div>
+      <div class="drop-hint">18店舗分（複数同時OK）</div>
+      <div class="drop-filename" id="fn3">ドロップ or クリック</div>
+      <input type="file" id="f3" accept=".xlsx,.xlsm,.xls" multiple onchange="handleFile(event,'yosan')">
+    </div>
+  </div>
+
+  <!-- スライド1 -->
+  <div class="tab-content active" id="tab-slide1">
+    <div id="slide1-empty" class="empty-state">
+      <div class="empty-icon">📄</div>
+      <div class="empty-text">全社数値表PDFをドロップしてください</div>
+    </div>
+    <div id="slide1-content" style="display:none">
+      <div class="summary-row" id="kpiRow"></div>
+      <div class="highlight-box" id="highlightBox"></div>
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="chart-title">売上予算 vs 実績（上位10店）</div>
+          <div class="chart-wrap"><canvas id="chartSales"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">達成率分布</div>
+          <div class="chart-wrap"><canvas id="chartAchieve"></canvas></div>
+        </div>
+      </div>
+      <div class="section-title">🏆 達成店舗ランキング</div>
+      <div class="table-wrap table-scroll">
+        <table id="tableOver"></table>
+      </div>
+      <div class="section-title">⚠️ 未達店舗（差異順）</div>
+      <div class="table-wrap table-scroll">
+        <table id="tableUnder"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- スライド2 -->
+  <div class="tab-content" id="tab-slide2">
+    <div id="slide2-empty" class="empty-state">
+      <div class="empty-icon">📊</div>
+      <div class="empty-text">客層分析表ExcelをドロップしてExcelの月タブを選択</div>
+    </div>
+    <div id="slide2-content" style="display:none">
+      <div class="month-selector" id="monthSelector"></div>
+      <div class="summary-row" id="kpiRow2"></div>
+      <div class="highlight-box" id="highlightBox2"></div>
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="chart-title">客層別 純契約率</div>
+          <div class="chart-wrap"><canvas id="chartType"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">店舗別 合計純契約率（当年vs前年）</div>
+          <div class="chart-wrap"><canvas id="chartStore2"></canvas></div>
+        </div>
+      </div>
+      <div class="section-title">店舗別 個人契約データ</div>
+      <div class="table-wrap table-scroll">
+        <table id="tableKyakuso"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- スライド3 -->
+  <div class="tab-content" id="tab-slide3">
+    <div id="slide3-empty" class="empty-state">
+      <div class="empty-icon">🏪</div>
+      <div class="empty-text">各店予算シートExcelをドロップ（複数同時OK）</div>
+    </div>
+    <div id="slide3-content" style="display:none">
+      <div class="month-selector" id="monthSelector3"></div>
+      <div class="store-grid" id="storeGrid"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// --- 状態管理 ---
+const state = {
+  pdfData: null,
+  kyakusoData: null,
+  yosanData: [], // 複数店舗
+  currentMonth: new Date().getMonth() + 1,
+  slide3Month: new Date().getMonth() + 1,
+};
+
+// 店舗名リスト（PDF解析順）
+const STORE_NAMES = [
+  '西宮北店','JR西宮店','塚口店','守口店','寝屋川店','枚方店',
+  '高槻店','大阪駅前店','はなてん店','京橋駅前店','淡路店',
+  '瓢箪山店','長田店','布施店','小阪店','長瀬店','八尾店','深井店'
+];
+
+// --- タブ切替 ---
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['slide1','slide2','slide3'][i] === id));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// --- ドラッグ＆ドロップ ---
+function onDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('dragover'); }
+function onDragLeave(id) { document.getElementById(id).classList.remove('dragover'); }
+function onDrop(e, type) {
+  e.preventDefault();
+  const files = e.dataTransfer.files;
+  if (!files.length) return;
+  const dzMap = { pdf: 'dz1', kyakuso: 'dz2', yosan: 'dz3' };
+  document.getElementById(dzMap[type]).classList.remove('dragover');
+  processFiles(files, type);
+}
+function handleFile(e, type) { processFiles(e.target.files, type); }
+
+async function processFiles(files, type) {
+  showLoading();
+  const fnMap = { pdf: 'fn1', kyakuso: 'fn2', yosan: 'fn3' };
+  const dzMap = { pdf: 'dz1', kyakuso: 'dz2', yosan: 'dz3' };
+  try {
+    if (type === 'pdf') {
+      const f = files[0];
+      document.getElementById('fn1').textContent = f.name;
+      document.getElementById('dz1').classList.add('loaded');
+      state.pdfData = await parsePDF(f);
+      renderSlide1();
+    } else if (type === 'kyakuso') {
+      const f = files[0];
+      document.getElementById('fn2').textContent = f.name;
+      document.getElementById('dz2').classList.add('loaded');
+      state.kyakusoData = await parseKyakuso(f);
+      renderSlide2();
+    } else if (type === 'yosan') {
+      const names = [];
+      for (const f of files) {
+        const d = await parseYosan(f);
+        if (d) { state.yosanData.push(d); names.push(d.storeName); }
+      }
+      document.getElementById('fn3').textContent = names.join(', ');
+      document.getElementById('dz3').classList.add('loaded');
+      renderSlide3();
+    }
+  } catch(ex) { console.error(ex); alert('ファイル読み込みエラー: ' + ex.message); }
+  hideLoading();
+}
+
+// --- PDF解析 ---
+async function parsePDF(file) {
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  let fullText = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    fullText += content.items.map(x => x.str).join(' ') + '\n';
+  }
+  return parsePDFText(fullText);
+}
+
+function parsePDFText(text) {
+  // PDFから数値行を抽出
+  // 各行: 店名 + 数値の塊
+  const rows = [];
+  // 数値の塊を検出: 店名の後に数値が続くパターン
+  // スペース区切りで分割して店名を探す
+  const lines = text.split('\n');
+
+  for (const storeName of STORE_NAMES) {
+    // 該当店名を含む行を探す
+    const lineIdx = lines.findIndex(l => l.includes(storeName));
+    if (lineIdx < 0) continue;
+    
+    // その行前後をまとめて数値を抽出
+    let segment = lines.slice(lineIdx, lineIdx + 3).join(' ');
+    const nums = extractNumbers(segment);
+    if (nums.length < 5) continue;
+
+    rows.push({
+      name: storeName,
+      salesBudget: nums[0],   // 売上予算
+      salesActual: nums[1],   // 回収（実績）
+      diff: nums[2] !== undefined ? nums[1] - nums[0] : null,
+      achieveRate: nums[0] > 0 ? nums[1] / nums[0] : 0,
+    });
+  }
+  
+  // エリア合計・全社合計の抽出
+  let totalBudget = 0, totalActual = 0;
+  const totalLine = lines.find(l => l.includes('合計') && l.includes('7'));
+  
+  rows.forEach(r => {
+    totalBudget += r.salesBudget || 0;
+    totalActual += r.salesActual || 0;
+  });
+
+  return { stores: rows, totalBudget, totalActual };
+}
+
+function extractNumbers(str) {
+  // 数値（整数・小数・%含む）を順に抽出
+  const matches = str.match(/[\d,]+\.?\d*/g) || [];
+  return matches.map(m => parseFloat(m.replace(/,/g, ''))).filter(n => !isNaN(n) && n > 0);
+}
+
+// --- Excel（客層分析）解析 ---
+async function parseKyakuso(file) {
+  const ab = await file.arrayBuffer();
+  const wb = XLSX.read(ab, { type: 'array' });
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const result = {};
+  
+  for (const m of months) {
+    if (!wb.SheetNames.includes(m)) continue;
+    const ws = wb.Sheets[m];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+    // 72行目(0-indexed: 71)からヘッダー、75行目〜がデータ
+    // 列構造: A=店名, B=単身新規当年, C=前年, D=契約当年, E=前年, F=率当年, G=前年
+    //          H=新婚新規当年, I=前, J=契約当, K=前, L=率当, M=前
+    //          N=家族新規当, O=前, P=契約当, Q=前, R=率当, S=前
+    // 合計: あとで計算
+    const stores = [];
+    for (let r = 74; r < Math.min(data.length, 112); r++) {
+      const row = data[r];
+      if (!row || !row[0] || typeof row[0] !== 'string') continue;
+      const name = row[0].trim();
+      if (!name || name === '全店合計' || name === '合計') continue;
+
+      const safe = v => (v == null || v === '-' || typeof v === 'string') ? 0 : Number(v);
+      
+      // 単身
+      const tandoku = { shinki: safe(row[1]), shinkiPrev: safe(row[2]), keiyaku: safe(row[3]), keiyakuPrev: safe(row[4]) };
+      // 新婚
+      const shinkon = { shinki: safe(row[7]), shinkiPrev: safe(row[8]), keiyaku: safe(row[9]), keiyakuPrev: safe(row[10]) };
+      // 家族
+      const kazoku = { shinki: safe(row[13]), shinkiPrev: safe(row[14]), keiyaku: safe(row[15]), keiyakuPrev: safe(row[16]) };
+      
+      // 合計
+      const totalShinki = tandoku.shinki + shinkon.shinki + kazoku.shinki;
+      const totalKeiyaku = tandoku.keiyaku + shinkon.keiyaku + kazoku.keiyaku;
+      const totalShinkiPrev = tandoku.shinkiPrev + shinkon.shinkiPrev + kazoku.shinkiPrev;
+      const totalKeiyakuPrev = tandoku.keiyakuPrev + shinkon.keiyakuPrev + kazoku.keiyakuPrev;
+
+      stores.push({
+        name,
+        tandoku, shinkon, kazoku,
+        totalShinki, totalKeiyaku,
+        totalRate: totalShinki > 0 ? totalKeiyaku / totalShinki : 0,
+        totalShinkiPrev, totalKeiyakuPrev,
+        totalRatePrev: totalShinkiPrev > 0 ? totalKeiyakuPrev / totalShinkiPrev : 0,
+      });
+    }
+    result[m] = stores;
+  }
+  return result;
+}
+
+// --- Excel（予算）解析 ---
+async function parseYosan(file) {
+  const ab = await file.arrayBuffer();
+  const wb = XLSX.read(ab, { type: 'array' });
+  
+  if (!wb.SheetNames.includes('根拠入力')) return null;
+  const ws = wb.Sheets['根拠入力'];
+  const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  
+  if (!data[2]) return null;
+  const storeName = data[2][1]; // B3
+  
+  const safe = v => (v == null || v === '-' || typeof v === 'string') ? 0 : Number(v);
+  
+  // 月ごとのデータ: 各月開始列(0-indexed): 月1=col3, 月2=col15, ... (12列ずつ)
+  const months = {};
+  for (let m = 1; m <= 12; m++) {
+    const colStart = 3 + (m - 1) * 12; // 0-indexed
+    // 行26(0-indexed:25): 一般媒体合計 → 新規合計=col+7, 契約数=col+8
+    const row25 = data[25] || [];
+    const shinkiIppan = safe(row25[colStart + 7]);
+    const keiyakuIppan = safe(row25[colStart + 8]);
+    // 行62(0-indexed:61): 店頭来店 → 新規合計=col+6, 契約数=col+7
+    const row61 = data[61] || [];
+    const shinkiTento = safe(row61[colStart + 6]);
+    const keiyakuTento = safe(row61[colStart + 7]);
+    
+    const totalShinki = shinkiIppan + shinkiTento;
+    const totalKeiyaku = keiyakuIppan + keiyakuTento;
+    months[m] = {
+      targetRate: totalShinki > 0 ? totalKeiyaku / totalShinki : 0,
+      targetShinki: totalShinki,
+      targetKeiyaku: totalKeiyaku,
+    };
+  }
+  return { storeName, months };
+}
+
+// --- スライド1描画 ---
+function renderSlide1() {
+  const d = state.pdfData;
+  if (!d || !d.stores.length) return;
+  
+  document.getElementById('slide1-empty').style.display = 'none';
+  document.getElementById('slide1-content').style.display = 'block';
+  
+  const stores = d.stores;
+  const totalBudget = stores.reduce((s,r) => s + (r.salesBudget||0), 0);
+  const totalActual = stores.reduce((s,r) => s + (r.salesActual||0), 0);
+  const diff = totalActual - totalBudget;
+  const achieveRate = totalBudget > 0 ? totalActual / totalBudget : 0;
+  const overStores = stores.filter(s => s.salesActual >= s.salesBudget && s.salesBudget > 0);
+  const underStores = stores.filter(s => s.salesActual < s.salesBudget && s.salesBudget > 0);
+
+  document.getElementById('headerPeriod').textContent = '2026年3月度';
+
+  // KPIカード
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi-card ${diff >= 0 ? 'green' : 'red'}">
+      <div class="kpi-label">全社売上予算</div>
+      <div class="kpi-val">${(totalBudget/10000).toFixed(0)}<small style="font-size:16px">万円</small></div>
+    </div>
+    <div class="kpi-card ${diff >= 0 ? 'green' : 'red'}">
+      <div class="kpi-label">全社実績（回収）</div>
+      <div class="kpi-val">${(totalActual/10000).toFixed(0)}<small style="font-size:16px">万円</small></div>
+      <div class="kpi-diff ${diff >= 0 ? 'pos' : 'neg'}">${diff >= 0 ? '▲' : '▼'} ${Math.abs(diff/10000).toFixed(0)}万円</div>
+    </div>
+    <div class="kpi-card ${achieveRate >= 1 ? 'green' : achieveRate >= 0.9 ? '' : 'red'}">
+      <div class="kpi-label">達成率</div>
+      <div class="kpi-val">${(achieveRate*100).toFixed(1)}<small style="font-size:16px">%</small></div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">予算達成店舗</div>
+      <div class="kpi-val">${overStores.length}<small style="font-size:16px">店</small></div>
+      <div class="kpi-sub">/ ${stores.length}店舗</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">未達店舗</div>
+      <div class="kpi-val">${underStores.length}<small style="font-size:16px">店</small></div>
+      <div class="kpi-diff neg">1店舗あたり ${stores.length > 0 ? (diff/stores.length/10000).toFixed(1) : '-'}万円</div>
+    </div>
+  `;
+
+  // ハイライト
+  const topStores = [...stores].filter(s=>s.salesBudget>0).sort((a,b) => b.achieveRate - a.achieveRate).slice(0,3);
+  const botStores = [...stores].filter(s=>s.salesBudget>0).sort((a,b) => a.achieveRate - b.achieveRate).slice(0,3);
+  document.getElementById('highlightBox').innerHTML = `
+    <div class="highlight-group">
+      <div class="highlight-group-title">🏆 達成上位店舗</div>
+      <div class="highlight-items">${topStores.map(s=>`<span class="highlight-item hi-green">${s.name} ${(s.achieveRate*100).toFixed(0)}%</span>`).join('')}</div>
+    </div>
+    <div class="highlight-group">
+      <div class="highlight-group-title">⚠️ 苦戦店舗</div>
+      <div class="highlight-items">${botStores.map(s=>`<span class="highlight-item hi-red">${s.name} ${(s.achieveRate*100).toFixed(0)}%</span>`).join('')}</div>
+    </div>
+  `;
+
+  // グラフ（達成店舗TOP10）
+  const sorted = [...stores].filter(s=>s.salesBudget>0).sort((a,b) => b.achieveRate - a.achieveRate).slice(0,10);
+  renderSalesChart(sorted);
+  renderAchieveChart(stores);
+
+  // テーブル（達成）
+  const overSorted = overStores.sort((a,b) => b.achieveRate - a.achieveRate);
+  document.getElementById('tableOver').innerHTML = buildSalesTable(overSorted, true);
+
+  // テーブル（未達）
+  const underSorted = underStores.sort((a,b) => a.salesActual - a.salesBudget - (b.salesActual - b.salesBudget));
+  document.getElementById('tableUnder').innerHTML = buildSalesTable(underSorted, false);
+}
+
+function buildSalesTable(stores, isOver) {
+  const rows = stores.map((s, i) => {
+    const diff = s.salesActual - s.salesBudget;
+    const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other';
+    return `<tr class="${isOver ? 'row-highlight-top' : 'row-highlight-bot'}">
+      <td><span class="rank-num ${rankClass}">${i+1}</span>${s.name}</td>
+      <td>${s.salesBudget > 0 ? (s.salesBudget).toLocaleString() : '-'}</td>
+      <td>${s.salesActual > 0 ? (s.salesActual).toLocaleString() : '-'}</td>
+      <td class="${diff >= 0 ? 'tag-over' : 'tag-under'}">${diff >= 0 ? '+' : ''}${diff.toLocaleString()}</td>
+      <td class="${s.achieveRate >= 1 ? 'tag-over' : s.achieveRate >= 0.9 ? 'tag-near' : 'tag-under'}">${(s.achieveRate*100).toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+  return `<thead><tr>
+    <th>店舗名</th><th>予算（万円）</th><th>実績（万円）</th><th>差異</th><th>達成率</th>
+  </tr></thead><tbody>${rows}</tbody>`;
+}
+
+let chartSalesInst, chartAchieveInst;
+function renderSalesChart(stores) {
+  if (chartSalesInst) chartSalesInst.destroy();
+  const ctx = document.getElementById('chartSales').getContext('2d');
+  chartSalesInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: stores.map(s => s.name),
+      datasets: [
+        { label: '予算', data: stores.map(s => s.salesBudget), backgroundColor: 'rgba(56,182,255,0.3)', borderColor: 'rgba(56,182,255,0.8)', borderWidth: 1 },
+        { label: '実績', data: stores.map(s => s.salesActual), backgroundColor: stores.map(s => s.salesActual >= s.salesBudget ? 'rgba(0,212,170,0.7)' : 'rgba(232,57,77,0.7)'), borderWidth: 0 },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#8fa3be', font: { size: 11 } } } }, scales: { x: { ticks: { color: '#8fa3be', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#8fa3be', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
+  });
+}
+
+function renderAchieveChart(stores) {
+  if (chartAchieveInst) chartAchieveInst.destroy();
+  const ctx = document.getElementById('chartAchieve').getContext('2d');
+  const under80 = stores.filter(s=>s.salesBudget>0 && s.achieveRate < 0.8).length;
+  const under100 = stores.filter(s=>s.salesBudget>0 && s.achieveRate >= 0.8 && s.achieveRate < 1).length;
+  const over100 = stores.filter(s=>s.salesBudget>0 && s.achieveRate >= 1).length;
+  chartAchieveInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['80%未満', '80〜100%', '100%以上'],
+      datasets: [{ data: [under80, under100, over100], backgroundColor: ['rgba(232,57,77,0.8)','rgba(245,166,35,0.8)','rgba(0,212,170,0.8)'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#8fa3be', font: { size: 11 }, padding: 12 } } } }
+  });
+}
+
+// --- スライド2描画 ---
+function renderSlide2() {
+  const d = state.kyakusoData;
+  if (!d) return;
+  
+  const availMonths = Object.keys(d).filter(k => d[k].length > 0);
+  if (!availMonths.length) return;
+  
+  document.getElementById('slide2-empty').style.display = 'none';
+  document.getElementById('slide2-content').style.display = 'block';
+
+  // 月選択ボタン
+  const sel = document.getElementById('monthSelector');
+  sel.innerHTML = '<span style="font-size:12px;color:var(--gray);margin-right:4px;">月を選択：</span>' +
+    availMonths.map(m => `<button class="month-btn ${m === state.currentMonth + '月' || (state.currentMonth === 0 && m === availMonths[0]) ? 'active' : ''}" onclick="selectMonth2('${m}')">${m}</button>`).join('');
+
+  // デフォルト選択
+  const defaultMonth = availMonths.includes(new Date().getMonth() + 1 + '月') ? new Date().getMonth() + 1 + '月' : availMonths[availMonths.length - 1];
+  selectMonth2(defaultMonth);
+}
+
+let chartTypeInst, chartStore2Inst;
+function selectMonth2(month) {
+  document.querySelectorAll('#monthSelector .month-btn').forEach(b => b.classList.toggle('active', b.textContent === month));
+  const stores = state.kyakusoData[month];
+  if (!stores) return;
+
+  // KPI
+  const totalShinki = stores.reduce((s,r)=>s+r.totalShinki,0);
+  const totalKeiyaku = stores.reduce((s,r)=>s+r.totalKeiyaku,0);
+  const totalRate = totalShinki > 0 ? totalKeiyaku/totalShinki : 0;
+  const totalShinkiPrev = stores.reduce((s,r)=>s+r.totalShinkiPrev,0);
+  const totalKeiyakuPrev = stores.reduce((s,r)=>s+r.totalKeiyakuPrev,0);
+  const totalRatePrev = totalShinkiPrev > 0 ? totalKeiyakuPrev/totalShinkiPrev : 0;
+  const rateDiff = totalRate - totalRatePrev;
+
+  // 客層合計
+  const tandokuTotal = stores.reduce((s,r)=>({shinki:s.shinki+r.tandoku.shinki, keiyaku:s.keiyaku+r.tandoku.keiyaku}),{shinki:0,keiyaku:0});
+  const shinkonTotal = stores.reduce((s,r)=>({shinki:s.shinki+r.shinkon.shinki, keiyaku:s.keiyaku+r.shinkon.keiyaku}),{shinki:0,keiyaku:0});
+  const kazokuTotal = stores.reduce((s,r)=>({shinki:s.shinki+r.kazoku.shinki, keiyaku:s.keiyaku+r.kazoku.keiyaku}),{shinki:0,keiyaku:0});
+
+  document.getElementById('kpiRow2').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">全社純契約率（${month}）</div>
+      <div class="kpi-val">${(totalRate*100).toFixed(1)}<small style="font-size:16px">%</small></div>
+      <div class="kpi-diff ${rateDiff >= 0 ? 'pos' : 'neg'}">${rateDiff >= 0 ? '▲' : '▼'} ${Math.abs(rateDiff*100).toFixed(1)}%（昨対比）</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">単身 契約率</div>
+      <div class="kpi-val">${tandokuTotal.shinki > 0 ? (tandokuTotal.keiyaku/tandokuTotal.shinki*100).toFixed(1) : '-'}<small style="font-size:16px">%</small></div>
+      <div class="kpi-sub">新規${tandokuTotal.shinki}件 / 契約${tandokuTotal.keiyaku}件</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">新婚 契約率</div>
+      <div class="kpi-val">${shinkonTotal.shinki > 0 ? (shinkonTotal.keiyaku/shinkonTotal.shinki*100).toFixed(1) : '-'}<small style="font-size:16px">%</small></div>
+      <div class="kpi-sub">新規${shinkonTotal.shinki}件 / 契約${shinkonTotal.keiyaku}件</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">家族 契約率</div>
+      <div class="kpi-val">${kazokuTotal.shinki > 0 ? (kazokuTotal.keiyaku/kazokuTotal.shinki*100).toFixed(1) : '-'}<small style="font-size:16px">%</small></div>
+      <div class="kpi-sub">新規${kazokuTotal.shinki}件 / 契約${kazokuTotal.keiyaku}件</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">前年純契約率</div>
+      <div class="kpi-val">${(totalRatePrev*100).toFixed(1)}<small style="font-size:16px">%</small></div>
+    </div>
+  `;
+
+  // ハイライト（全社平均±10%）
+  const avg = totalRate;
+  const goodStores = stores.filter(s => s.totalRate >= avg + 0.1 && s.totalShinki > 0);
+  const badStores = stores.filter(s => s.totalRate <= avg - 0.1 && s.totalShinki > 0);
+  document.getElementById('highlightBox2').innerHTML = `
+    <div class="highlight-group">
+      <div class="highlight-group-title">🏆 優良店舗（平均+10%以上）</div>
+      <div class="highlight-items">${goodStores.map(s=>`<span class="highlight-item hi-green">${s.name} ${(s.totalRate*100).toFixed(1)}%</span>`).join('') || '<span style="color:var(--gray);font-size:12px">該当なし</span>'}</div>
+    </div>
+    <div class="highlight-group">
+      <div class="highlight-group-title">⚠️ 苦戦店舗（平均-10%以下）</div>
+      <div class="highlight-items">${badStores.map(s=>`<span class="highlight-item hi-red">${s.name} ${(s.totalRate*100).toFixed(1)}%</span>`).join('') || '<span style="color:var(--gray);font-size:12px">該当なし</span>'}</div>
+    </div>
+    <div class="highlight-group" style="margin-left:auto;text-align:right">
+      <div class="highlight-group-title">全社平均</div>
+      <div style="font-family:'Oswald',sans-serif;font-size:24px;font-weight:700;color:var(--sky)">${(avg*100).toFixed(1)}%</div>
+    </div>
+  `;
+
+  // グラフ
+  if (chartTypeInst) chartTypeInst.destroy();
+  const ctx1 = document.getElementById('chartType').getContext('2d');
+  chartTypeInst = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: ['単身', '新婚(同棲)', '家族'],
+      datasets: [{
+        label: '純契約率',
+        data: [
+          tandokuTotal.shinki > 0 ? +(tandokuTotal.keiyaku/tandokuTotal.shinki*100).toFixed(1) : 0,
+          shinkonTotal.shinki > 0 ? +(shinkonTotal.keiyaku/shinkonTotal.shinki*100).toFixed(1) : 0,
+          kazokuTotal.shinki > 0 ? +(kazokuTotal.keiyaku/kazokuTotal.shinki*100).toFixed(1) : 0,
+        ],
+        backgroundColor: ['rgba(56,182,255,0.7)','rgba(0,212,170,0.7)','rgba(245,166,35,0.7)'],
+        borderWidth: 0, borderRadius: 6,
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8fa3be' }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#8fa3be', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' }, max: 100 } } }
+  });
+
+  if (chartStore2Inst) chartStore2Inst.destroy();
+  const ctx2 = document.getElementById('chartStore2').getContext('2d');
+  const sortedStores = [...stores].filter(s=>s.totalShinki>0).sort((a,b)=>b.totalRate-a.totalRate);
+  chartStore2Inst = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: sortedStores.map(s => s.name),
+      datasets: [
+        { label: '当年', data: sortedStores.map(s => +(s.totalRate*100).toFixed(1)), backgroundColor: 'rgba(56,182,255,0.7)', borderWidth: 0, borderRadius: 4 },
+        { label: '前年', data: sortedStores.map(s => +(s.totalRatePrev*100).toFixed(1)), backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 0, borderRadius: 4 },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#8fa3be', font: { size: 11 } } } }, scales: { x: { ticks: { color: '#8fa3be', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#8fa3be', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
+  });
+
+  // テーブル
+  const tableRows = sortedStores.map((s,i) => {
+    const tandokuRate = s.tandoku.shinki > 0 ? s.tandoku.keiyaku/s.tandoku.shinki : null;
+    const shinkonRate = s.shinkon.shinki > 0 ? s.shinkon.keiyaku/s.shinkon.shinki : null;
+    const kazokuRate = s.kazoku.shinki > 0 ? s.kazoku.keiyaku/s.kazoku.shinki : null;
+    const diff = s.totalRate - s.totalRatePrev;
+    const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other';
+    return `<tr>
+      <td><span class="rank-num ${rankClass}">${i+1}</span>${s.name}</td>
+      <td>${s.totalShinki}</td><td>${s.totalKeiyaku}</td>
+      <td class="${s.totalRate >= avg ? 'tag-over' : 'tag-under'}">${(s.totalRate*100).toFixed(1)}%</td>
+      <td class="${diff >= 0 ? 'tag-over' : 'tag-under'}">${diff >= 0 ? '+' : ''}${(diff*100).toFixed(1)}%</td>
+      <td>${tandokuRate !== null ? (tandokuRate*100).toFixed(1)+'%' : '-'}</td>
+      <td>${shinkonRate !== null ? (shinkonRate*100).toFixed(1)+'%' : '-'}</td>
+      <td>${kazokuRate !== null ? (kazokuRate*100).toFixed(1)+'%' : '-'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tableKyakuso').innerHTML = `
+    <thead><tr>
+      <th>店舗名</th><th>新規数</th><th>契約数</th><th>純契約率</th><th>昨対比</th><th>単身</th><th>新婚</th><th>家族</th>
+    </tr></thead><tbody>${tableRows}</tbody>
+  `;
+}
+
+// --- スライド3描画 ---
+function renderSlide3() {
+  const d = state.yosanData;
+  if (!d.length) return;
+  
+  document.getElementById('slide3-empty').style.display = 'none';
+  document.getElementById('slide3-content').style.display = 'block';
+
+  // 月選択
+  const sel3 = document.getElementById('monthSelector3');
+  const months = Array.from({length:12},(_,i)=>i+1);
+  sel3.innerHTML = '<span style="font-size:12px;color:var(--gray);margin-right:4px;">月を選択：</span>' +
+    months.map(m => `<button class="month-btn ${m === state.slide3Month ? 'active' : ''}" onclick="selectMonth3(${m})">${m}月</button>`).join('');
+  
+  renderStoreCards(state.slide3Month);
+}
+
+function selectMonth3(m) {
+  state.slide3Month = m;
+  document.querySelectorAll('#monthSelector3 .month-btn').forEach(b => b.classList.toggle('active', b.textContent === m + '月'));
+  renderStoreCards(m);
+}
+
+function renderStoreCards(month) {
+  const grid = document.getElementById('storeGrid');
+  
+  // PDFの実績データと突合
+  const pdfStores = state.pdfData ? state.pdfData.stores : [];
+  
+  const cards = state.yosanData.map(store => {
+    const mData = store.months[month];
+    if (!mData) return '';
+    const targetRate = mData.targetRate;
+    
+    // PDFから実績を取得（店名マッチング）
+    const pdfStore = pdfStores.find(p => p.name === store.storeName || store.storeName.includes(p.name) || p.name.includes(store.storeName));
+    
+    // 客層分析から実績を取得
+    const kyakusoMonth = state.kyakusoData ? state.kyakusoData[month + '月'] : null;
+    const kyakusoStore = kyakusoMonth ? kyakusoMonth.find(s => s.name === store.storeName || store.storeName.includes(s.name) || s.name.includes(store.storeName)) : null;
+    
+    const actualRate = kyakusoStore ? kyakusoStore.totalRate : null;
+    const barWidth = targetRate > 0 ? Math.min((actualRate !== null ? actualRate : 0) / targetRate * 100, 150) : 0;
+    const achieveRate = actualRate !== null && targetRate > 0 ? actualRate / targetRate : null;
+    const isOver = achieveRate !== null && achieveRate >= 1;
+    
+    return `
+      <div class="store-card">
+        <div class="store-name">
+          ${store.storeName}
+          ${achieveRate !== null ? `<span class="achieve-badge ${isOver ? 'achieve-over' : 'achieve-under'}">${isOver ? '✓ 達成' : '未達'}</span>` : ''}
+        </div>
+        <div class="store-month-label">純契約率目標</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:600;color:var(--sky);margin-bottom:10px">
+          ${targetRate > 0 ? (targetRate*100).toFixed(1) + '%' : '目標未設定'}
+        </div>
+        ${actualRate !== null ? `
+          <div class="store-month-label">実績</div>
+          <div class="rate-bar-wrap">
+            <div class="rate-bar-bg">
+              <div class="rate-bar" style="width:${Math.min(actualRate/targetRate*100,100)}%;background:${isOver ? 'var(--teal)' : actualRate/targetRate >= 0.8 ? 'var(--gold)' : 'var(--red)'}"></div>
+            </div>
+            <div class="rate-val" style="color:${isOver ? 'var(--teal)' : actualRate/targetRate >= 0.8 ? 'var(--gold)' : 'var(--red)'}">${(actualRate*100).toFixed(1)}%</div>
+          </div>
+          <div class="rate-target">目標達成率: <strong style="color:${isOver ? 'var(--teal)' : 'var(--red)'}">${(achieveRate*100).toFixed(1)}%</strong>　（新規${kyakusoStore.totalShinki}件 / 契約${kyakusoStore.totalKeiyaku}件）</div>
+        ` : `<div style="color:var(--gray);font-size:12px">客層分析データをドロップすると実績が表示されます</div>`}
+        <hr class="divider" style="margin:12px 0">
+        <div style="font-size:10px;color:var(--gray)">目標: 新規${mData.targetShinki}件 / 契約${mData.targetKeiyaku}件</div>
+      </div>
+    `;
+  }).join('');
+  
+  grid.innerHTML = cards || '<div class="empty-state"><div class="empty-text">データなし</div></div>';
+}
+
+function showLoading() { document.getElementById('loadingBar').style.display = 'block'; }
+function hideLoading() { setTimeout(() => document.getElementById('loadingBar').style.display = 'none', 500); }
+</script>
+</body>
+</html>
