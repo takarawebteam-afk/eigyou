@@ -243,6 +243,10 @@ input[type=file]{display:none;}
   <button class="main-tab" onclick="switchTab('p2')">🖨️ 印刷②：客層別契約率</button>
 </div>
 
+<div class="fbar" id="fb1" style="display:none">
+  <span class="flbl">📅 月選択</span>
+  <div class="fgrp" id="mb1"></div>
+</div>
 <div class="fbar" id="fb2" style="display:none">
   <span class="flbl">📅 月選択</span>
   <div class="fgrp" id="mb2"></div>
@@ -255,24 +259,7 @@ input[type=file]{display:none;}
 <!-- スライド1 -->
 <div class="page active" id="page-s1">
   <div class="page-body">
-    <div class="drop-section">
-      <div class="dz" id="dz1" onclick="document.getElementById('f1').click()" ondragover="dov(event,'dz1')" ondragleave="dlv('dz1')" ondrop="dp(event,'zs')">
-        <div class="dz-icon">📊</div><div class="dz-label">全社数値表 Excel</div>
-        <div class="dz-hint">全店一覧_数値表.xlsm（一般タブ）</div><div class="dz-fn" id="fn1">ドロップ or クリック</div>
-        <input type="file" id="f1" accept=".xlsx,.xlsm,.xls" onchange="hf(event,'zs')">
-      </div>
-      <div class="dz" id="dz2" onclick="document.getElementById('f2').click()" ondragover="dov(event,'dz2')" ondragleave="dlv('dz2')" ondrop="dp(event,'ky')">
-        <div class="dz-icon">📊</div><div class="dz-label">客層分析表 Excel</div>
-        <div class="dz-hint">客層_2026.xlsm</div><div class="dz-fn" id="fn2">ドロップ or クリック</div>
-        <input type="file" id="f2" accept=".xlsx,.xlsm,.xls" onchange="hf(event,'ky')">
-      </div>
-      <div class="dz" id="dz3" onclick="document.getElementById('f3').click()" ondragover="dov(event,'dz3')" ondragleave="dlv('dz3')" ondrop="dp(event,'yo')">
-        <div class="dz-icon">🏪</div><div class="dz-label">各店予算シート Excel</div>
-        <div class="dz-hint">18店舗分（複数同時OK）</div><div class="dz-fn" id="fn3">ドロップ or クリック</div>
-        <input type="file" id="f3" accept=".xlsx,.xlsm,.xls" multiple onchange="hf(event,'yo')">
-      </div>
-    </div>
-    <div id="e1" class="empty"><div class="empty-i">📊</div><div class="empty-t">全社数値表Excelをドロップしてください（一般タブ）</div></div>
+    <div id="e1" class="empty"><div class="empty-i">📊</div><div class="empty-t">右上の≡メニューから全社数値表Excelを取り込んでください</div></div>
     <div id="c1" style="display:none">
       <div class="kpi-row" id="kr1"></div>
       <div class="hl-box" id="hl1"></div>
@@ -355,7 +342,7 @@ input[type=file]{display:none;}
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-const ST={pdf:null,ky:null,yo:[],s2m:null,s3m:new Date().getMonth()+1,p1m:new Date().getMonth()+1,p2m:new Date().getMonth()+1};
+const ST={pdf:null,ky:null,yo:[],s1m:new Date().getMonth()+1,s2m:null,s3m:new Date().getMonth()+1,p1m:new Date().getMonth()+1,p2m:new Date().getMonth()+1};
 
 function saveLS(){
   try{
@@ -396,6 +383,7 @@ function switchTab(id){
   document.querySelectorAll('.main-tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===id));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
+  document.getElementById('fb1').style.display=id==='s1'?'flex':'none';
   document.getElementById('fb2').style.display=id==='s2'?'flex':'none';
   document.getElementById('fb3').style.display=id==='s3'?'flex':'none';
   if(id!=='s2') document.getElementById('fb2').style.display='none';
@@ -521,6 +509,10 @@ async function parseYo(file){
 function rS1(){
   const d=ST.pdf;if(!d||!d.rows.length)return;
   document.getElementById('e1').style.display='none';document.getElementById('c1').style.display='block';
+  // fb1の月選択ボタン（1〜12月）
+  document.getElementById('fb1').style.display='flex';
+  const curM=ST.s1m||new Date().getMonth()+1;
+  document.getElementById('mb1').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>`<button class="fb ${m===curM?'active':''}" onclick="selM1(${m})">${m}月</button>`).join('');
   const rows=d.rows;
   const tb=rows.reduce((s,r)=>s+r.b,0),ta=rows.reduce((s,r)=>s+r.a,0),df=ta-tb,ar=tb>0?ta/tb:0;
   const ov=rows.filter(r=>r.b>0&&r.a>=r.b),un=rows.filter(r=>r.b>0&&r.a<r.b);
@@ -575,6 +567,7 @@ function rS2(){
 }
 
 let CT,CS2;
+function selM1(m){ST.s1m=m;document.querySelectorAll('#mb1 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m+'月'));rS1();}
 function selM2(m){
   ST.s2m=m;
   document.querySelectorAll('#mb2 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m));
@@ -656,6 +649,8 @@ function updateHmLabel(id,text,fname){
   if(btn) btn.classList.add('loaded');
   if(fn) fn.textContent=text;
 }
+
+function clearData(){
   if(!confirm('取り込んだデータをすべてリセットしますか？')) return;
   localStorage.clear();
   location.reload();
