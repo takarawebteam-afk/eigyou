@@ -204,10 +204,10 @@ input[type=file]{display:none;}
 <div class="page active" id="page-s1">
   <div class="page-body">
     <div class="drop-section">
-      <div class="dz" id="dz1" onclick="document.getElementById('f1').click()" ondragover="dov(event,'dz1')" ondragleave="dlv('dz1')" ondrop="dp(event,'pdf')">
-        <div class="dz-icon">📄</div><div class="dz-label">全社数値表 PDF</div>
-        <div class="dz-hint">売上・反響・契約データ</div><div class="dz-fn" id="fn1">ドロップ or クリック</div>
-        <input type="file" id="f1" accept=".pdf" onchange="hf(event,'pdf')">
+      <div class="dz" id="dz1" onclick="document.getElementById('f1').click()" ondragover="dov(event,'dz1')" ondragleave="dlv('dz1')" ondrop="dp(event,'zs')">
+        <div class="dz-icon">📊</div><div class="dz-label">全社数値表 Excel</div>
+        <div class="dz-hint">全店一覧_数値表.xlsm（一般タブ）</div><div class="dz-fn" id="fn1">ドロップ or クリック</div>
+        <input type="file" id="f1" accept=".xlsx,.xlsm,.xls" onchange="hf(event,'zs')">
       </div>
       <div class="dz" id="dz2" onclick="document.getElementById('f2').click()" ondragover="dov(event,'dz2')" ondragleave="dlv('dz2')" ondrop="dp(event,'ky')">
         <div class="dz-icon">📊</div><div class="dz-label">客層分析表 Excel</div>
@@ -220,7 +220,7 @@ input[type=file]{display:none;}
         <input type="file" id="f3" accept=".xlsx,.xlsm,.xls" multiple onchange="hf(event,'yo')">
       </div>
     </div>
-    <div id="e1" class="empty"><div class="empty-i">📄</div><div class="empty-t">全社数値表PDFをドロップしてください</div></div>
+    <div id="e1" class="empty"><div class="empty-i">📊</div><div class="empty-t">全社数値表Excelをドロップしてください（一般タブ）</div></div>
     <div id="c1" style="display:none">
       <div class="kpi-row" id="kr1"></div>
       <div class="hl-box" id="hl1"></div>
@@ -351,9 +351,9 @@ function hf(e,t){pf(e.target.files,t);}
 async function pf(files,type){
   sl();
   try{
-    if(type==='pdf'){
+    if(type==='zs'){
       const f=files[0];document.getElementById('fn1').textContent=f.name;document.getElementById('dz1').classList.add('loaded');
-      ST.pdf=await parsePDF(f);rS1();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
+      ST.pdf=await parseZensha(f);rS1();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
     }else if(type==='ky'){
       const f=files[0];document.getElementById('fn2').textContent=f.name;document.getElementById('dz2').classList.add('loaded');
       ST.ky=await parseKy(f);rS2();if(ST.yo.length)rS3();rP1(ST.p1m||new Date().getMonth()+1);rP2(ST.p2m||new Date().getMonth()+1);saveLS();
@@ -366,18 +366,28 @@ async function pf(files,type){
   hl();
 }
 
-async function parsePDF(file){
+async function parseZensha(file){
   const ab=await file.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-  let txt='';
-  for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const c=await p.getTextContent();txt+=c.items.map(x=>x.str).join(' ')+'\n';}
-  const lines=txt.split('\n'),rows=[];
-  for(const nm of STORES){
-    const li=lines.findIndex(l=>l.includes(nm));if(li<0)continue;
-    const seg=lines.slice(li,li+3).join(' ');
-    const nums=(seg.match(/[\d,]+\.?\d*/g)||[]).map(m=>parseFloat(m.replace(/,/g,''))).filter(n=>!isNaN(n)&&n>0);
-    if(nums.length<2)continue;
-    rows.push({nm,b:nums[0],a:nums[1],r:nums[0]>0?nums[1]/nums[0]:0});
+  const wb=XLSX.read(ab,{type:'array'});
+  const ws=wb.Sheets['一般'];
+  if(!ws) throw new Error('「一般」タブが見つかりません');
+  const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  const sv=v=>(v==null||v==='-'||typeof v==='string')?0:Number(v);
+  const rows=[];
+  // 8行目(index7)から店舗データ
+  for(let r=7;r<data.length;r++){
+    const row=data[r];
+    if(!row||!row[0]||typeof row[0]!=='string') continue;
+    const nm=row[0].trim();
+    if(!nm||nm.includes('エリア')||nm.includes('合計')||nm.includes('営業所')||nm.includes('センター')) continue;
+    const b=sv(row[2]);  // 列3: 売上予算
+    const a=sv(row[3]);  // 列4: 回収（実績）
+    const nb=sv(row[22]); // 列23: 新規集客目標
+    const na=sv(row[23]); // 列24: 新規数実績
+    const ka=sv(row[38]); // 列39: 契約本数実績
+    const ra=sv(row[40]); // 列41: 純契約率実績
+    if(b===0&&a===0) continue;
+    rows.push({nm,b,a,r:b>0?a/b:0,nb,na,ka,ra});
   }
   return {rows};
 }
@@ -568,7 +578,7 @@ function rP1(month){
 
   // PDFの実績データ
   const pdfMap={};
-  if(ST.pdf) ST.pdf.rows.forEach(r=>pdfMap[r.nm]={b:r.b,a:r.a,r:r.r});
+  if(ST.pdf) ST.pdf.rows.forEach(r=>pdfMap[r.nm]={b:r.b,a:r.a,r:r.r,nb:r.nb,na:r.na,ka:r.ka,ra:r.ra});
 
   // 予算シートの目標データ
   const yoMap={};
@@ -599,11 +609,11 @@ function rP1(month){
 
     const sb=pd.b||null, sa=pd.a||null;
     const sar=sb&&sa?sa/sb:null;
-    const nb=yo.ts||null, na=ky.ts||null;
+    const nb=yo.ts||null, na=pd.na||ky.ts||null;
     const nar=nb&&na?na/nb:null;
-    const kb=yo.tk||null, ka=ky.tk||null;
+    const kb=yo.tk||null, ka=pd.ka||ky.tk||null;
     const kar=kb&&ka?ka/kb:null;
-    const rb=yo.tr||null, ra=ky.tr||null;
+    const rb=yo.tr||null, ra=pd.ra||ky.tr||null;
     const rar=rb&&ra?ra/rb:null;
 
     const fmt=v=>v===null?'-':v>=1?`<span class="ov">${(v*100).toFixed(0)}%</span>`:v>=0.8?`<span class="ne">${(v*100).toFixed(0)}%</span>`:`<span class="un">${(v*100).toFixed(0)}%</span>`;
