@@ -123,6 +123,43 @@ input[type=file]{display:none;}
 .empty-i{font-size:36px;margin-bottom:10px;opacity:0.4;}
 .empty-t{font-size:13px;}
 .lbar{position:fixed;top:0;left:0;width:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--sky));z-index:9999;transition:width .3s;display:none;}
+
+/* 印刷用 */
+.print-btn{display:flex;align-items:center;gap:6px;padding:7px 18px;background:var(--blue);border:none;border-radius:20px;color:white;font-family:'Noto Sans JP',sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-left:auto;transition:all .2s;}
+.print-btn:hover{background:var(--blue-dark);}
+.print-sheet{background:white;width:297mm;min-height:210mm;margin:0 auto 24px;padding:10mm 12mm;box-shadow:0 2px 16px rgba(21,101,192,0.12);border-radius:4px;position:relative;}
+.ps-header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--blue);padding-bottom:6px;margin-bottom:8px;}
+.ps-title{font-size:14px;font-weight:900;color:var(--blue);}
+.ps-period{font-size:11px;color:var(--text-mid);font-weight:600;}
+.ps-table{width:100%;border-collapse:collapse;font-size:10px;}
+.ps-table th{background:var(--blue);color:white;padding:5px 6px;text-align:center;font-weight:700;white-space:nowrap;font-size:9px;}
+.ps-table th.th-store{text-align:left;width:80px;}
+.ps-table td{padding:4px 6px;text-align:right;border-bottom:1px solid #e0eaf6;white-space:nowrap;font-size:9px;}
+.ps-table td.td-store{text-align:left;font-weight:700;font-size:9px;color:var(--text);}
+.ps-table tr.tr-b td{background:#f0f6ff;color:var(--text-mid);font-size:9px;}
+.ps-table tr.tr-a td{background:white;font-size:9px;}
+.ps-table tr.tr-r td{background:var(--off-white);font-size:9px;}
+.ps-table .ov{color:var(--green);font-weight:700;}
+.ps-table .un{color:var(--red);font-weight:700;}
+.ps-table .ne{color:var(--gold);font-weight:700;}
+.ps-table .lbl{font-size:8px;color:var(--text-light);display:block;}
+.ps-section{font-size:9px;font-weight:700;color:white;background:var(--blue-mid);padding:3px 6px;}
+.ps-wrap{overflow-x:auto;}
+.print-area{padding:16px 24px 40px;max-width:320mm;margin:0 auto;}
+.print-fbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+
+@media print{
+  header,
+  .main-tabs,
+  .fbar,
+  .print-btn,
+  .print-fbar,
+  #page-s1,#page-s2,#page-s3{display:none!important;}
+  .page.active{display:none!important;}
+  #page-p1,#page-p2{display:block!important;}
+  .print-sheet{box-shadow:none;margin:0;page-break-after:always;width:100%;}
+  body{background:white;}
+}
 </style>
 </head>
 <body>
@@ -143,6 +180,8 @@ input[type=file]{display:none;}
   <button class="main-tab active" onclick="switchTab('s1')">📊 スライド1：売上実績</button>
   <button class="main-tab" onclick="switchTab('s2')">👥 スライド2：契約種別</button>
   <button class="main-tab" onclick="switchTab('s3')">🏪 スライド3：店舗別目標</button>
+  <button class="main-tab" onclick="switchTab('p1')">🖨️ 印刷①：目標vs実績</button>
+  <button class="main-tab" onclick="switchTab('p2')">🖨️ 印刷②：客層別契約率</button>
 </div>
 
 <div class="fbar" id="fb2" style="display:none">
@@ -204,6 +243,48 @@ input[type=file]{display:none;}
   </div>
 </div>
 
+<!-- 印刷①：目標vs実績 -->
+<div class="page" id="page-p1">
+  <div class="print-area">
+    <div class="print-fbar">
+      <span class="flbl">📅 月選択</span>
+      <div class="fgrp" id="mbp1"></div>
+      <button class="print-btn" onclick="window.print()">🖨️ 印刷する（A4横）</button>
+    </div>
+    <div id="ep1" class="empty"><div class="empty-i">🖨️</div><div class="empty-t">PDF＋各店予算シートをドロップすると印刷用シートが表示されます</div></div>
+    <div id="cp1" style="display:none">
+      <div class="print-sheet" id="ps1">
+        <div class="ps-header">
+          <div class="ps-title" id="ps1-title">●月度 店舗別 目標・実績一覧</div>
+          <div class="ps-period">仲介営業部</div>
+        </div>
+        <div class="ps-wrap"><table class="ps-table" id="pt1"></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 印刷②：客層別契約率 -->
+<div class="page" id="page-p2">
+  <div class="print-area">
+    <div class="print-fbar">
+      <span class="flbl">📅 月選択</span>
+      <div class="fgrp" id="mbp2"></div>
+      <button class="print-btn" onclick="window.print()">🖨️ 印刷する（A4横）</button>
+    </div>
+    <div id="ep2" class="empty"><div class="empty-i">🖨️</div><div class="empty-t">客層分析表Excelをドロップすると印刷用シートが表示されます</div></div>
+    <div id="cp2" style="display:none">
+      <div class="print-sheet" id="ps2">
+        <div class="ps-header">
+          <div class="ps-title" id="ps2-title">●月度 店舗別 客層別純契約率一覧</div>
+          <div class="ps-period">仲介営業部</div>
+        </div>
+        <div class="ps-wrap"><table class="ps-table" id="pt2"></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- スライド3 -->
 <div class="page" id="page-s3">
   <div class="page-body">
@@ -214,15 +295,45 @@ input[type=file]{display:none;}
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-const ST={pdf:null,ky:null,yo:[],s2m:null,s3m:new Date().getMonth()+1};
+const ST={pdf:null,ky:null,yo:[],s2m:null,s3m:new Date().getMonth()+1,p1m:new Date().getMonth()+1,p2m:new Date().getMonth()+1};
+
+function saveLS(){
+  try{
+    if(ST.pdf) localStorage.setItem('st_pdf',JSON.stringify(ST.pdf));
+    if(ST.ky) localStorage.setItem('st_ky',JSON.stringify(ST.ky));
+    if(ST.yo.length) localStorage.setItem('st_yo',JSON.stringify(ST.yo));
+    localStorage.setItem('st_fn1',document.getElementById('fn1').textContent);
+    localStorage.setItem('st_fn2',document.getElementById('fn2').textContent);
+    localStorage.setItem('st_fn3',document.getElementById('fn3').textContent);
+  }catch(e){console.warn('保存失敗',e);}
+}
+
+function loadLS(){
+  try{
+    const pd=localStorage.getItem('st_pdf');
+    const ky=localStorage.getItem('st_ky');
+    const yo=localStorage.getItem('st_yo');
+    const fn1=localStorage.getItem('st_fn1');
+    const fn2=localStorage.getItem('st_fn2');
+    const fn3=localStorage.getItem('st_fn3');
+    if(pd){ST.pdf=JSON.parse(pd);if(fn1)document.getElementById('fn1').textContent=fn1;document.getElementById('dz1').classList.add('loaded');rS1();rP1(ST.p1m);}
+    if(ky){ST.ky=JSON.parse(ky);if(fn2)document.getElementById('fn2').textContent=fn2;document.getElementById('dz2').classList.add('loaded');rS2();rP2(ST.p2m);}
+    if(yo){ST.yo=JSON.parse(yo);if(fn3)document.getElementById('fn3').textContent=fn3;document.getElementById('dz3').classList.add('loaded');rS3();rP1(ST.p1m);}
+  }catch(e){console.warn('復元失敗',e);}
+}
+
+window.addEventListener('load',()=>loadLS());
 const STORES=['西宮北店','JR西宮店','塚口店','守口店','寝屋川店','枚方店','高槻店','大阪駅前店','はなてん店','京橋駅前店','淡路店','瓢箪山店','長田店','布施店','小阪店','長瀬店','八尾店','深井店'];
 
 function switchTab(id){
-  document.querySelectorAll('.main-tab').forEach((t,i)=>t.classList.toggle('active',['s1','s2','s3'][i]===id));
+  const tabs=['s1','s2','s3','p1','p2'];
+  document.querySelectorAll('.main-tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===id));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   document.getElementById('fb2').style.display=id==='s2'?'flex':'none';
   document.getElementById('fb3').style.display=id==='s3'?'flex':'none';
+  if(id==='p1') rP1(ST.p1m||new Date().getMonth()+1);
+  if(id==='p2') rP2(ST.p2m||new Date().getMonth()+1);
 }
 function dov(e,id){e.preventDefault();document.getElementById(id).classList.add('dragover');}
 function dlv(id){document.getElementById(id).classList.remove('dragover');}
@@ -234,14 +345,14 @@ async function pf(files,type){
   try{
     if(type==='pdf'){
       const f=files[0];document.getElementById('fn1').textContent=f.name;document.getElementById('dz1').classList.add('loaded');
-      ST.pdf=await parsePDF(f);rS1();
+      ST.pdf=await parsePDF(f);rS1();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
     }else if(type==='ky'){
       const f=files[0];document.getElementById('fn2').textContent=f.name;document.getElementById('dz2').classList.add('loaded');
-      ST.ky=await parseKy(f);rS2();if(ST.yo.length)rS3();
+      ST.ky=await parseKy(f);rS2();if(ST.yo.length)rS3();rP1(ST.p1m||new Date().getMonth()+1);rP2(ST.p2m||new Date().getMonth()+1);saveLS();
     }else if(type==='yo'){
       const ns=[];
       for(const f of files){const d=await parseYo(f);if(d){ST.yo.push(d);ns.push(d.n);}}
-      document.getElementById('fn3').textContent=ns.join(', ');document.getElementById('dz3').classList.add('loaded');rS3();
+      document.getElementById('fn3').textContent=ns.join(', ');document.getElementById('dz3').classList.add('loaded');rS3();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
     }
   }catch(ex){console.error(ex);alert('エラー: '+ex.message);}
   hl();
@@ -434,6 +545,172 @@ function rCards(month){
 
 function sl(){const b=document.getElementById('lbar');b.style.display='block';b.style.width='70%';}
 function hl(){const b=document.getElementById('lbar');b.style.width='100%';setTimeout(()=>{b.style.display='none';b.style.width='0';},400);}
+
+// --- 印刷①：目標vs実績 ---
+function rP1(month){
+  ST.p1m=month;
+  const hasPdf=ST.pdf&&ST.pdf.rows.length;
+  const hasYo=ST.yo.length>0;
+  if(!hasPdf&&!hasYo) return;
+  document.getElementById('ep1').style.display='none';
+  document.getElementById('cp1').style.display='block';
+  // 月選択ボタン
+  document.getElementById('mbp1').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>`<button class="fb ${m===month?'active':''}" onclick="selPM1(${m})">${m}月</button>`).join('');
+  document.getElementById('ps1-title').textContent=month+'月度 店舗別 目標・実績一覧';
+
+  // PDFの実績データ
+  const pdfMap={};
+  if(ST.pdf) ST.pdf.rows.forEach(r=>pdfMap[r.nm]={b:r.b,a:r.a,r:r.r});
+
+  // 予算シートの目標データ
+  const yoMap={};
+  ST.yo.forEach(s=>{const md=s.m[month];if(md)yoMap[s.n]={tr:md.tr,ts:md.ts,tk:md.tk};});
+
+  // 客層分析の実績
+  const kyMap={};
+  if(ST.ky&&ST.ky[month+'月']) ST.ky[month+'月'].forEach(s=>kyMap[s.nm]={ts:s.ts,tk:s.tk,tr:s.tr});
+
+  // 全店舗リスト
+  const allStores=[...new Set([...STORES,...Object.keys(yoMap)])];
+
+  // テーブル生成
+  const head=`<thead>
+    <tr>
+      <th class="th-store" rowspan="3">店舗名</th>
+      <th colspan="3">売上（万円）</th>
+      <th colspan="3">新規数</th>
+      <th colspan="3">純契約率</th>
+      <th>契約数</th>
+    </tr>
+    <tr>
+      <th>予算</th><th>実績</th><th>達成率</th>
+      <th>目標</th><th>実績</th><th>達成率</th>
+      <th>目標</th><th>実績</th><th>達成率</th>
+      <th>実績</th>
+    </tr>
+  </thead>`;
+
+  const rows=allStores.map(nm=>{
+    const pd=pdfMap[nm]||{};
+    const yo=yoMap[nm]||{};
+    const ky=kyMap[nm]||{};
+
+    // 売上
+    const sb=pd.b||null, sa=pd.a||null;
+    const sar=sb&&sa?sa/sb:null;
+    // 新規
+    const nb=yo.ts||null, na=ky.ts||null;
+    const nar=nb&&na?na/nb:null;
+    // 純契約率
+    const rb=yo.tr||null, ra=ky.tr||null;
+    const rar=rb&&ra?ra/rb:null;
+    // 契約数
+    const ka=ky.tk||null;
+
+    const cls=v=>v===null?'':v>=1?'ov':v>=0.8?'ne':'un';
+    const fmt=v=>v===null?'-':v>=1?`<span class="ov">${(v*100).toFixed(0)}%</span>`:v>=0.8?`<span class="ne">${(v*100).toFixed(0)}%</span>`:`<span class="un">${(v*100).toFixed(0)}%</span>`;
+    const fmtR=v=>v===null?'-':`${(v*100).toFixed(1)}%`;
+
+    return `
+      <tr class="tr-b"><td class="td-store" rowspan="3">${nm}</td>
+        <td>${sb!==null?sb.toLocaleString():'-'}</td>
+        <td>${nb!==null?nb:'-'}</td>
+        <td>${rb!==null?(rb*100).toFixed(1)+'%':'-'}</td>
+        <td></td>
+      </tr>
+      <tr class="tr-a">
+        <td>${sa!==null?sa.toLocaleString():'-'}</td>
+        <td>${na!==null?na:'-'}</td>
+        <td>${ra!==null?(ra*100).toFixed(1)+'%':'-'}</td>
+        <td>${ka!==null?ka:'-'}</td>
+      </tr>
+      <tr class="tr-r">
+        <td>${fmt(sar)}</td>
+        <td>${fmt(nar)}</td>
+        <td>${fmt(rar)}</td>
+        <td></td>
+      </tr>`;
+  }).join('');
+
+  // 凡例行
+  const legend=`<tr style="background:var(--blue-dark)">
+    <td class="td-store" style="color:white;font-size:8px">※上：予算/目標　中：実績　下：達成率</td>
+    <td colspan="10" style="color:rgba(255,255,255,0.7);font-size:8px;text-align:left">　達成：緑　惜しい(80%以上)：橙　未達：赤</td>
+  </tr>`;
+
+  document.getElementById('pt1').innerHTML=head+`<tbody>${rows}${legend}</tbody>`;
+}
+
+function selPM1(m){ST.p1m=m;rP1(m);}
+
+// --- 印刷②：客層別契約率 ---
+function rP2(month){
+  ST.p2m=month;
+  if(!ST.ky) return;
+  const stores=ST.ky[month+'月'];
+  if(!stores||!stores.length) return;
+  document.getElementById('ep2').style.display='none';
+  document.getElementById('cp2').style.display='block';
+  document.getElementById('mbp2').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>`<button class="fb ${m===month?'active':''}" onclick="selPM2(${m})">${m}月</button>`).join('');
+  document.getElementById('ps2-title').textContent=month+'月度 店舗別 客層別純契約率一覧';
+
+  const totalShinki=stores.reduce((s,r)=>s+r.ts,0);
+  const totalKeiyaku=stores.reduce((s,r)=>s+r.tk,0);
+  const avg=totalShinki>0?totalKeiyaku/totalShinki:0;
+
+  const head=`<thead>
+    <tr>
+      <th class="th-store" rowspan="2">店舗名</th>
+      <th colspan="3">単身</th>
+      <th colspan="3">新婚(同棲)</th>
+      <th colspan="3">家族</th>
+      <th colspan="3">合計</th>
+    </tr>
+    <tr>
+      <th>新規</th><th>契約</th><th>純契約率</th>
+      <th>新規</th><th>契約</th><th>純契約率</th>
+      <th>新規</th><th>契約</th><th>純契約率</th>
+      <th>新規</th><th>契約</th><th>純契約率</th>
+    </tr>
+  </thead>`;
+
+  const fmtR=(s,k)=>{
+    if(s===0) return '-';
+    const r=k/s;
+    const cls=r>=avg+0.1?'ov':r<=avg-0.1?'un':'';
+    return `<span class="${cls}">${(r*100).toFixed(1)}%</span>`;
+  };
+
+  const rows=stores.map(s=>{
+    return `<tr>
+      <td class="td-store">${s.nm}</td>
+      <td>${s.tn.s||'-'}</td><td>${s.tn.k||'-'}</td><td>${fmtR(s.tn.s,s.tn.k)}</td>
+      <td>${s.sh.s||'-'}</td><td>${s.sh.k||'-'}</td><td>${fmtR(s.sh.s,s.sh.k)}</td>
+      <td>${s.kz.s||'-'}</td><td>${s.kz.k||'-'}</td><td>${fmtR(s.kz.s,s.kz.k)}</td>
+      <td>${s.ts||'-'}</td><td>${s.tk||'-'}</td><td>${fmtR(s.ts,s.tk)}</td>
+    </tr>`;
+  }).join('');
+
+  // 合計行
+  const tn={s:stores.reduce((a,r)=>a+r.tn.s,0),k:stores.reduce((a,r)=>a+r.tn.k,0)};
+  const sh={s:stores.reduce((a,r)=>a+r.sh.s,0),k:stores.reduce((a,r)=>a+r.sh.k,0)};
+  const kz={s:stores.reduce((a,r)=>a+r.kz.s,0),k:stores.reduce((a,r)=>a+r.kz.k,0)};
+  const total=`<tr style="background:var(--blue-pale);font-weight:700;">
+    <td class="td-store" style="color:var(--blue);">全社合計</td>
+    <td>${tn.s}</td><td>${tn.k}</td><td>${tn.s>0?(tn.k/tn.s*100).toFixed(1)+'%':'-'}</td>
+    <td>${sh.s}</td><td>${sh.k}</td><td>${sh.s>0?(sh.k/sh.s*100).toFixed(1)+'%':'-'}</td>
+    <td>${kz.s}</td><td>${kz.k}</td><td>${kz.s>0?(kz.k/kz.s*100).toFixed(1)+'%':'-'}</td>
+    <td>${totalShinki}</td><td>${totalKeiyaku}</td><td>${(avg*100).toFixed(1)}%</td>
+  </tr>
+  <tr style="background:var(--blue-dark)">
+    <td class="td-store" style="color:white;font-size:8px">※全社平均 ${(avg*100).toFixed(1)}%</td>
+    <td colspan="12" style="color:rgba(255,255,255,0.7);font-size:8px;text-align:left">　緑：全社平均+10%以上の優良店　赤：全社平均-10%以下の苦戦店</td>
+  </tr>`;
+
+  document.getElementById('pt2').innerHTML=head+`<tbody>${rows}${total}</tbody>`;
+}
+
+function selPM2(m){ST.p2m=m;rP2(m);}
 </script>
 </body>
 </html>
