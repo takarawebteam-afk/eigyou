@@ -181,6 +181,7 @@ input[type=file]{display:none;}
     </div>
   </div>
   <div class="hperiod" id="hperiod">ファイルをドロップして開始</div>
+  <button onclick="clearData()" style="padding:5px 12px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35);border-radius:6px;color:white;font-family:'Noto Sans JP',sans-serif;font-size:11px;cursor:pointer;margin-left:12px;">🗑️ データリセット</button>
 </header>
 
 <div class="main-tabs">
@@ -387,7 +388,7 @@ async function parseZensha(file){
     {nm:'八尾店', r:36},{nm:'深井店', r:37},
   ];
   // 全店合計行
-  const totalRow=data[55]||[];
+  const totalRow=data[72]||[];
 
   const rows=STORE_ROWS.map(({nm,r})=>{
     const row=data[r-1]||[];
@@ -581,6 +582,12 @@ function rCards(month){
 
 function sl(){const b=document.getElementById('lbar');b.style.display='block';b.style.width='70%';}
 function hl(){const b=document.getElementById('lbar');b.style.width='100%';setTimeout(()=>{b.style.display='none';b.style.width='0';},400);}
+
+function clearData(){
+  if(!confirm('取り込んだデータをすべてリセットしますか？')) return;
+  localStorage.clear();
+  location.reload();
+}
 
 // --- 印刷①：目標vs実績 ---
 function rP1(month){
