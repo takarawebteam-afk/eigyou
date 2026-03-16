@@ -192,6 +192,26 @@ input[type=file]{display:none;}
   <button class="main-tab" onclick="switchTab('p2')">🖨️ 印刷②：客層別契約率</button>
 </div>
 
+<!-- 共通ファイルバー（常時表示） -->
+<div class="fbar" id="fb-files">
+  <span class="flbl">📂 ファイル</span>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <label style="display:flex;align-items:center;gap:5px;padding:4px 12px;border:1.5px solid var(--border);border-radius:20px;background:white;color:var(--text-mid);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;" id="lbl1">
+      <span id="fi1">📊 全社数値表</span>
+      <input type="file" accept=".xlsx,.xlsm,.xls" onchange="hf(event,'zs')" style="display:none">
+    </label>
+    <label style="display:flex;align-items:center;gap:5px;padding:4px 12px;border:1.5px solid var(--border);border-radius:20px;background:white;color:var(--text-mid);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;" id="lbl2">
+      <span id="fi2">📊 客層分析表</span>
+      <input type="file" accept=".xlsx,.xlsm,.xls" onchange="hf(event,'ky')" style="display:none">
+    </label>
+    <label style="display:flex;align-items:center;gap:5px;padding:4px 12px;border:1.5px solid var(--border);border-radius:20px;background:white;color:var(--text-mid);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;" id="lbl3">
+      <span id="fi3">🏪 各店予算</span>
+      <input type="file" accept=".xlsx,.xlsm,.xls" multiple onchange="hf(event,'yo')" style="display:none">
+    </label>
+  </div>
+  <div class="fgrp" id="mb-month" style="margin-left:8px;"></div>
+</div>
+
 <div class="fbar" id="fb2" style="display:none">
   <span class="flbl">📅 月選択</span>
   <div class="fgrp" id="mb2"></div>
@@ -325,9 +345,15 @@ function loadLS(){
     const fn1=localStorage.getItem('st_fn1');
     const fn2=localStorage.getItem('st_fn2');
     const fn3=localStorage.getItem('st_fn3');
-    if(pd){ST.pdf=JSON.parse(pd);if(fn1)document.getElementById('fn1').textContent=fn1;document.getElementById('dz1').classList.add('loaded');rS1();rP1(ST.p1m);}
-    if(ky){ST.ky=JSON.parse(ky);if(fn2)document.getElementById('fn2').textContent=fn2;document.getElementById('dz2').classList.add('loaded');rS2();rP2(ST.p2m);}
-    if(yo){ST.yo=JSON.parse(yo);if(fn3)document.getElementById('fn3').textContent=fn3;document.getElementById('dz3').classList.add('loaded');rS3();rP1(ST.p1m);}
+    if(pd){ST.pdf=JSON.parse(pd);
+      if(fn1){document.getElementById('fn1').textContent=fn1;document.getElementById('fi1').textContent='✅ '+fn1.replace(/\.xlsm?$/,'');document.getElementById('lbl1').style.borderColor='var(--green)';document.getElementById('lbl1').style.color='var(--green)';}
+      document.getElementById('dz1').classList.add('loaded');rS1();rP1(ST.p1m);}
+    if(ky){ST.ky=JSON.parse(ky);
+      if(fn2){document.getElementById('fn2').textContent=fn2;document.getElementById('fi2').textContent='✅ '+fn2.replace(/\.xlsm?$/,'');document.getElementById('lbl2').style.borderColor='var(--green)';document.getElementById('lbl2').style.color='var(--green)';}
+      document.getElementById('dz2').classList.add('loaded');rS2();rP2(ST.p2m);}
+    if(yo){ST.yo=JSON.parse(yo);
+      if(fn3){document.getElementById('fn3').textContent=fn3;document.getElementById('fi3').textContent='✅ '+fn3;document.getElementById('lbl3').style.borderColor='var(--green)';document.getElementById('lbl3').style.color='var(--green)';}
+      document.getElementById('dz3').classList.add('loaded');rS3();rP1(ST.p1m);}
   }catch(e){console.warn('復元失敗',e);}
 }
 
@@ -355,15 +381,23 @@ async function pf(files,type){
   sl();
   try{
     if(type==='zs'){
-      const f=files[0];document.getElementById('fn1').textContent=f.name;document.getElementById('dz1').classList.add('loaded');
+      const f=files[0];
+      document.getElementById('fn1').textContent=f.name;document.getElementById('dz1').classList.add('loaded');
+      document.getElementById('fi1').textContent='✅ '+f.name.replace(/\.xlsm?$/,'');
+      document.getElementById('lbl1').style.borderColor='var(--green)';document.getElementById('lbl1').style.color='var(--green)';
       ST.pdf=await parseZensha(f);rS1();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
     }else if(type==='ky'){
       const f=files[0];document.getElementById('fn2').textContent=f.name;document.getElementById('dz2').classList.add('loaded');
+      document.getElementById('fi2').textContent='✅ '+f.name.replace(/\.xlsm?$/,'');
+      document.getElementById('lbl2').style.borderColor='var(--green)';document.getElementById('lbl2').style.color='var(--green)';
       ST.ky=await parseKy(f);rS2();if(ST.yo.length)rS3();rP1(ST.p1m||new Date().getMonth()+1);rP2(ST.p2m||new Date().getMonth()+1);saveLS();
     }else if(type==='yo'){
       const ns=[];
       for(const f of files){const d=await parseYo(f);if(d){ST.yo.push(d);ns.push(d.n);}}
-      document.getElementById('fn3').textContent=ns.join(', ');document.getElementById('dz3').classList.add('loaded');rS3();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
+      document.getElementById('fn3').textContent=ns.join(', ');document.getElementById('dz3').classList.add('loaded');
+      document.getElementById('fi3').textContent='✅ '+ns.length+'店舗';
+      document.getElementById('lbl3').style.borderColor='var(--green)';document.getElementById('lbl3').style.color='var(--green)';
+      rS3();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
     }
   }catch(ex){console.error(ex);alert('エラー: '+ex.message);}
   hl();
