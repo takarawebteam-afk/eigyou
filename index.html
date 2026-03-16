@@ -373,23 +373,41 @@ async function parseZensha(file){
   if(!ws) throw new Error('「一般」タブが見つかりません');
   const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
   const sv=v=>(v==null||v==='-'||typeof v==='string')?0:Number(v);
-  const rows=[];
-  // 8行目(index7)から店舗データ
-  for(let r=7;r<data.length;r++){
-    const row=data[r];
-    if(!row||!row[0]||typeof row[0]!=='string') continue;
-    const nm=row[0].trim();
-    if(!nm||nm.includes('エリア')||nm.includes('合計')||nm.includes('営業所')||nm.includes('センター')) continue;
-    const b=sv(row[2]);  // 列3: 売上予算
-    const a=sv(row[3]);  // 列4: 回収（実績）
-    const nb=sv(row[22]); // 列23: 新規集客目標
-    const na=sv(row[23]); // 列24: 新規数実績
-    const ka=sv(row[38]); // 列39: 契約本数実績
-    const ra=sv(row[40]); // 列41: 純契約率実績
-    if(b===0&&a===0) continue;
-    rows.push({nm,b,a,r:b>0?a/b:0,nb,na,ka,ra});
-  }
-  return {rows};
+
+  // H1から月を取得（列8=index7）
+  const h1=data[0]?data[0][7]:null;
+  const periodText=h1?String(h1):'';
+
+  // 店舗別の行マッピング（1-indexed → array index = row-1）
+  const STORE_ROWS=[
+    {nm:'西宮北店', r:8},{nm:'JR西宮店', r:9},{nm:'塚口店', r:10},
+    {nm:'守口店', r:15},{nm:'寝屋川店', r:16},{nm:'枚方店', r:17},{nm:'高槻店', r:18},
+    {nm:'大阪駅前店', r:22},{nm:'はなてん店', r:23},{nm:'京橋駅前店', r:24},{nm:'淡路店', r:25},
+    {nm:'瓢箪山店', r:29},{nm:'長田店', r:30},{nm:'布施店', r:31},{nm:'小阪店', r:32},{nm:'長瀬店', r:33},
+    {nm:'八尾店', r:36},{nm:'深井店', r:37},
+  ];
+  // 全店合計行
+  const totalRow=data[55]||[];
+
+  const rows=STORE_ROWS.map(({nm,r})=>{
+    const row=data[r-1]||[];
+    const b=sv(row[2]);   // C列: 売上予算
+    const a=sv(row[3]);   // D列: 売上実績
+    const nb=sv(row[22]); // W列: 新規目標
+    const na=sv(row[23]); // X列: 新規実績
+    const ka=sv(row[38]); // AM列: 契約本数実績
+    const ra=sv(row[40]); // AO列: 純契約率実績
+    return {nm,b,a,r:b>0?a/b:0,nb,na,ka,ra};
+  });
+
+  // 全社合計
+  const total={
+    b:sv(totalRow[2]),a:sv(totalRow[3]),
+    nb:sv(totalRow[22]),na:sv(totalRow[23]),
+    ka:sv(totalRow[38]),ra:sv(totalRow[40]),
+  };
+
+  return {rows,total,period:periodText};
 }
 
 async function parseKy(file){
@@ -441,7 +459,7 @@ function rS1(){
   const rows=d.rows;
   const tb=rows.reduce((s,r)=>s+r.b,0),ta=rows.reduce((s,r)=>s+r.a,0),df=ta-tb,ar=tb>0?ta/tb:0;
   const ov=rows.filter(r=>r.b>0&&r.a>=r.b),un=rows.filter(r=>r.b>0&&r.a<r.b);
-  document.getElementById('hperiod').textContent='2026年3月度';
+  document.getElementById('hperiod').textContent=d.period||'';
   document.getElementById('kr1').innerHTML=`
     <div class="kcard ${df>=0?'kgreen':'kred'}"><div class="kc-lbl">全社売上予算</div><div class="kc-num">${tb.toLocaleString()}<span class="kc-unit">万</span></div></div>
     <div class="kcard ${df>=0?'kgreen':'kred'}"><div class="kc-lbl">全社実績（回収）</div><div class="kc-num">${ta.toLocaleString()}<span class="kc-unit">万</span></div><div class="kc-diff ${df>=0?'pos':'neg'}">${df>=0?'▲':'▼'} ${Math.abs(df).toLocaleString()}万円</div></div>
