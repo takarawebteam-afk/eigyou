@@ -101,9 +101,13 @@ input[type=file]{display:none;}
 .ov{color:var(--green);font-weight:700;}
 .un{color:var(--red);font-weight:700;}
 .ne{color:var(--gold);font-weight:700;}
-.store-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
-.area-section{margin-bottom:24px;}
-.area-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;}
+.store-grid{display:grid;gap:12px;}
+.store-grid.cols-3{grid-template-columns:repeat(3,1fr);}
+.store-grid.cols-4{grid-template-columns:repeat(4,1fr);}
+.store-grid.cols-2{grid-template-columns:repeat(2,1fr);}
+.store-grid.cols-5{grid-template-columns:repeat(5,1fr);}
+.area-section{margin-bottom:20px;}
+.area-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;}
 .area-hyogo{background:#e8f4fd;border-left:4px solid #1565c0;color:#1565c0;}
 .area-keihoku{background:#e8f5e9;border-left:4px solid #2e7d32;color:#2e7d32;}
 .area-chuo{background:#fff8e1;border-left:4px solid #f5a623;color:#b7791f;}
@@ -674,9 +678,11 @@ function rCards(month){
     if(!areaStores.length)return'';
     const cards=areaStores.map(s=>makeCard(s,month)).join('');
     if(!cards.trim())return'';
+    const colsMap={1:'cols-2',2:'cols-2',3:'cols-3',4:'cols-4',5:'cols-5'};
+    const colsCls=colsMap[areaStores.length]||'cols-3';
     return `<div class="area-section">
       <div class="area-header ${area.cls}">${area.label}<span class="area-count">（${areaStores.length}店舗）</span></div>
-      <div class="store-grid">${cards}</div>
+      <div class="store-grid ${colsCls}">${cards}</div>
     </div>`;
   }).join('');
   document.getElementById('sg').innerHTML=html||'<div class="empty"><div class="empty-i">🏪</div><div class="empty-t">データなし</div></div>';
