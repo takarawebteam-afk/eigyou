@@ -989,20 +989,47 @@ function rP2(month){
     </tr>
   </thead>`;
 
-  const fmtR=(s,k)=>{
-    if(s===0) return '-';
+  // 客層別の全社平均を計算
+  const avgTn=stores.reduce((a,r)=>a+r.tn.s,0)>0?stores.reduce((a,r)=>a+r.tn.k,0)/stores.reduce((a,r)=>a+r.tn.s,0):0;
+  const avgSh=stores.reduce((a,r)=>a+r.sh.s,0)>0?stores.reduce((a,r)=>a+r.sh.k,0)/stores.reduce((a,r)=>a+r.sh.s,0):0;
+  const avgKz=stores.reduce((a,r)=>a+r.kz.s,0)>0?stores.reduce((a,r)=>a+r.kz.k,0)/stores.reduce((a,r)=>a+r.kz.s,0):0;
+
+  // アイコンセル生成
+  const iconCell=(s,k,catAvg)=>{
+    if(!s||s===0) return `<td style="text-align:center;color:#bbb;font-size:8px;">－</td>`;
     const r=k/s;
-    const cls=r>=avg+0.1?'ov':r<=avg-0.1?'un':'';
-    return `<span class="${cls}">${(r*100).toFixed(1)}%</span>`;
+    const diff=r-catAvg;
+    let icon,color,bg;
+    if(diff>=0.1){icon='★';color='#1565c0';bg='rgba(21,101,192,0.1)';}
+    else if(diff>=-0.1){icon='▲';color='#b7791f';bg='rgba(245,166,35,0.1)';}
+    else{icon='▼';color='#c62828';bg='rgba(198,40,40,0.1)';}
+    return `<td style="background:${bg};text-align:center;padding:2px 3px;">
+      <div style="font-size:12px;font-weight:700;color:${color};">${icon}</div>
+      <div style="font-size:7px;color:${color};font-weight:600;">${(r*100).toFixed(1)}%</div>
+    </td>`;
+  };
+
+  const fmtR=(s,k)=>{
+    if(s===0) return '<td style="text-align:center;color:#aaa;font-size:8px;">-</td>';
+    const r=k/s;
+    const diff=r-avg;
+    let icon,color,bg;
+    if(diff>=0.1){icon='★';color='#1565c0';bg='rgba(21,101,192,0.1)';}
+    else if(diff>=-0.1){icon='▲';color='#b7791f';bg='rgba(245,166,35,0.1)';}
+    else{icon='▼';color='#c62828';bg='rgba(198,40,40,0.1)';}
+    return `<td style="background:${bg};text-align:center;padding:2px 3px;">
+      <div style="font-size:12px;font-weight:700;color:${color};">${icon}</div>
+      <div style="font-size:7px;color:${color};font-weight:600;">${(r*100).toFixed(1)}%</div>
+    </td>`;
   };
 
   const rows=stores.map(s=>{
     return `<tr>
       <td class="td-store">${s.nm}</td>
-      <td>${s.tn.s||'-'}</td><td>${s.tn.k||'-'}</td><td>${fmtR(s.tn.s,s.tn.k)}</td>
-      <td>${s.sh.s||'-'}</td><td>${s.sh.k||'-'}</td><td>${fmtR(s.sh.s,s.sh.k)}</td>
-      <td>${s.kz.s||'-'}</td><td>${s.kz.k||'-'}</td><td>${fmtR(s.kz.s,s.kz.k)}</td>
-      <td>${s.ts||'-'}</td><td>${s.tk||'-'}</td><td>${fmtR(s.ts,s.tk)}</td>
+      <td>${s.tn.s||'-'}</td><td>${s.tn.k||'-'}</td>${iconCell(s.tn.s,s.tn.k,avgTn)}
+      <td>${s.sh.s||'-'}</td><td>${s.sh.k||'-'}</td>${iconCell(s.sh.s,s.sh.k,avgSh)}
+      <td>${s.kz.s||'-'}</td><td>${s.kz.k||'-'}</td>${iconCell(s.kz.s,s.kz.k,avgKz)}
+      <td>${s.ts||'-'}</td><td>${s.tk||'-'}</td>${fmtR(s.ts,s.tk)}
     </tr>`;
   }).join('');
 
@@ -1012,14 +1039,16 @@ function rP2(month){
   const kz={s:stores.reduce((a,r)=>a+r.kz.s,0),k:stores.reduce((a,r)=>a+r.kz.k,0)};
   const total=`<tr style="background:var(--blue-pale);font-weight:700;">
     <td class="td-store" style="color:var(--blue);">全社合計</td>
-    <td>${tn.s}</td><td>${tn.k}</td><td>${tn.s>0?(tn.k/tn.s*100).toFixed(1)+'%':'-'}</td>
-    <td>${sh.s}</td><td>${sh.k}</td><td>${sh.s>0?(sh.k/sh.s*100).toFixed(1)+'%':'-'}</td>
-    <td>${kz.s}</td><td>${kz.k}</td><td>${kz.s>0?(kz.k/kz.s*100).toFixed(1)+'%':'-'}</td>
-    <td>${totalShinki}</td><td>${totalKeiyaku}</td><td>${(avg*100).toFixed(1)}%</td>
+    <td>${tn.s}</td><td>${tn.k}</td><td style="text-align:center;font-weight:700;color:var(--blue)">${tn.s>0?(tn.k/tn.s*100).toFixed(1)+'%':'-'}</td>
+    <td>${sh.s}</td><td>${sh.k}</td><td style="text-align:center;font-weight:700;color:var(--blue)">${sh.s>0?(sh.k/sh.s*100).toFixed(1)+'%':'-'}</td>
+    <td>${kz.s}</td><td>${kz.k}</td><td style="text-align:center;font-weight:700;color:var(--blue)">${kz.s>0?(kz.k/kz.s*100).toFixed(1)+'%':'-'}</td>
+    <td>${totalShinki}</td><td>${totalKeiyaku}</td><td style="text-align:center;font-weight:700;color:var(--blue)">${(avg*100).toFixed(1)}%</td>
   </tr>
   <tr style="background:var(--blue-dark)">
-    <td class="td-store" style="color:white;font-size:8px">※全社平均 ${(avg*100).toFixed(1)}%</td>
-    <td colspan="12" style="color:rgba(255,255,255,0.7);font-size:8px;text-align:left">　緑：全社平均+10%以上の優良店　赤：全社平均-10%以下の苦戦店</td>
+    <td class="td-store" style="color:white;font-size:7px">平均<br>単身${(avgTn*100).toFixed(1)}%<br>新婚${(avgSh*100).toFixed(1)}%<br>家族${(avgKz*100).toFixed(1)}%</td>
+    <td colspan="12" style="color:rgba(255,255,255,0.85);font-size:8px;text-align:left;line-height:2;">
+      ★ 良い（客層平均+10%以上）　▲ 普通（±10%以内）　▼ 苦戦（客層平均-10%以下）
+    </td>
   </tr>`;
 
   document.getElementById('pt2').innerHTML=head+`<tbody>${rows}${total}</tbody>`;
