@@ -226,7 +226,6 @@ input[type=file]{display:none;}
     </div>
   </div>
   <div class="hperiod" id="hperiod" style="font-size:11px;color:rgba(255,255,255,0.7);margin-left:auto;"></div>
-  <button class="share-btn" id="shareBtn" onclick="createShareURL()" style="display:none">🔗 共有リンク作成</button>
   <div class="hmenu-btn" onclick="toggleMenu()"><span></span><span></span><span></span></div>
 </header>
 
@@ -863,11 +862,10 @@ function rP1(month){
     </tr>
   </thead>`;
 
-  const rows=allStores.map(nm=>{
+  const rowData=allStores.map(nm=>{
     const pd=pdfMap[nm]||{};
     const yo=yoMap[nm]||{};
     const ky=kyMap[nm]||{};
-
     const sb=pd.b||null, sa=pd.a||null;
     const sar=sb&&sa?sa/sb:null;
     const nb=yo.ts||null, na=pd.na||ky.ts||null;
@@ -876,9 +874,19 @@ function rP1(month){
     const kar=kb&&ka?ka/kb:null;
     const rb=yo.tr||null, ra=pd.ra||ky.tr||null;
     const rar=rb&&ra?ra/rb:null;
+    return {nm,sb,sa,sar,nb,na,nar,kb,ka,kar,rb,ra,rar};
+  });
+  // 契約率達成率順（rar降順、nullは末尾）
+  rowData.sort((a,b)=>{
+    if(a.rar===null&&b.rar===null)return 0;
+    if(a.rar===null)return 1;
+    if(b.rar===null)return -1;
+    return b.rar-a.rar;
+  });
 
-    const fmt=v=>v===null?'-':v>=1?`<span class="ov">${(v*100).toFixed(0)}%</span>`:v>=0.8?`<span class="ne">${(v*100).toFixed(0)}%</span>`:`<span class="un">${(v*100).toFixed(0)}%</span>`;
+  const fmt=v=>v===null?'-':v>=1?`<span class="ov">${(v*100).toFixed(0)}%</span>`:v>=0.8?`<span class="ne">${(v*100).toFixed(0)}%</span>`:`<span class="un">${(v*100).toFixed(0)}%</span>`;
 
+  const rows=rowData.map(({nm,sb,sa,sar,nb,na,nar,kb,ka,kar,rb,ra,rar})=>{
     return `<tr>
       <td class="td-store">${nm}</td>
       <td>${sb!==null?sb.toLocaleString():'-'}</td>
@@ -994,41 +1002,39 @@ function rP2(month){
   const avgSh=stores.reduce((a,r)=>a+r.sh.s,0)>0?stores.reduce((a,r)=>a+r.sh.k,0)/stores.reduce((a,r)=>a+r.sh.s,0):0;
   const avgKz=stores.reduce((a,r)=>a+r.kz.s,0)>0?stores.reduce((a,r)=>a+r.kz.k,0)/stores.reduce((a,r)=>a+r.kz.s,0):0;
 
-  // アイコンセル生成
-  const iconCell=(s,k,catAvg)=>{
+  // アイコンセル → 色のみ表示
+  const colorCell=(s,k,catAvg)=>{
     if(!s||s===0) return `<td style="text-align:center;color:#bbb;font-size:8px;">－</td>`;
     const r=k/s;
     const diff=r-catAvg;
-    let icon,color,bg;
-    if(diff>=0.1){icon='★';color='#1565c0';bg='rgba(21,101,192,0.1)';}
-    else if(diff>=-0.1){icon='▲';color='#b7791f';bg='rgba(245,166,35,0.1)';}
-    else{icon='▼';color='#c62828';bg='rgba(198,40,40,0.1)';}
-    return `<td style="background:${bg};text-align:center;padding:2px 3px;">
-      <div style="font-size:12px;font-weight:700;color:${color};">${icon}</div>
-      <div style="font-size:7px;color:${color};font-weight:600;">${(r*100).toFixed(1)}%</div>
-    </td>`;
+    if(diff>=0.1){
+      return `<td style="background:rgba(21,101,192,0.15);text-align:center;color:#1565c0;font-weight:700;font-size:9px;">${(r*100).toFixed(1)}%</td>`;
+    }else if(diff<=-0.1){
+      return `<td style="background:rgba(198,40,40,0.12);text-align:center;color:#c62828;font-weight:700;font-size:9px;">${(r*100).toFixed(1)}%</td>`;
+    }else{
+      return `<td style="text-align:center;font-size:9px;">${(r*100).toFixed(1)}%</td>`;
+    }
   };
 
   const fmtR=(s,k)=>{
-    if(s===0) return '<td style="text-align:center;color:#aaa;font-size:8px;">-</td>';
+    if(s===0) return `<td style="text-align:center;color:#aaa;font-size:8px;">-</td>`;
     const r=k/s;
     const diff=r-avg;
-    let icon,color,bg;
-    if(diff>=0.1){icon='★';color='#1565c0';bg='rgba(21,101,192,0.1)';}
-    else if(diff>=-0.1){icon='▲';color='#b7791f';bg='rgba(245,166,35,0.1)';}
-    else{icon='▼';color='#c62828';bg='rgba(198,40,40,0.1)';}
-    return `<td style="background:${bg};text-align:center;padding:2px 3px;">
-      <div style="font-size:12px;font-weight:700;color:${color};">${icon}</div>
-      <div style="font-size:7px;color:${color};font-weight:600;">${(r*100).toFixed(1)}%</div>
-    </td>`;
+    if(diff>=0.1){
+      return `<td style="background:rgba(21,101,192,0.15);text-align:center;color:#1565c0;font-weight:700;font-size:9px;">${(r*100).toFixed(1)}%</td>`;
+    }else if(diff<=-0.1){
+      return `<td style="background:rgba(198,40,40,0.12);text-align:center;color:#c62828;font-weight:700;font-size:9px;">${(r*100).toFixed(1)}%</td>`;
+    }else{
+      return `<td style="text-align:center;font-size:9px;">${(r*100).toFixed(1)}%</td>`;
+    }
   };
 
   const rows=stores.map(s=>{
     return `<tr>
       <td class="td-store">${s.nm}</td>
-      <td>${s.tn.s||'-'}</td><td>${s.tn.k||'-'}</td>${iconCell(s.tn.s,s.tn.k,avgTn)}
-      <td>${s.sh.s||'-'}</td><td>${s.sh.k||'-'}</td>${iconCell(s.sh.s,s.sh.k,avgSh)}
-      <td>${s.kz.s||'-'}</td><td>${s.kz.k||'-'}</td>${iconCell(s.kz.s,s.kz.k,avgKz)}
+      <td>${s.tn.s||'-'}</td><td>${s.tn.k||'-'}</td>${colorCell(s.tn.s,s.tn.k,avgTn)}
+      <td>${s.sh.s||'-'}</td><td>${s.sh.k||'-'}</td>${colorCell(s.sh.s,s.sh.k,avgSh)}
+      <td>${s.kz.s||'-'}</td><td>${s.kz.k||'-'}</td>${colorCell(s.kz.s,s.kz.k,avgKz)}
       <td>${s.ts||'-'}</td><td>${s.tk||'-'}</td>${fmtR(s.ts,s.tk)}
     </tr>`;
   }).join('');
