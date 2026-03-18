@@ -439,13 +439,17 @@ async function pf(files,type){
       const names=[];
       for(const f of files){
         const d=await parseZensha(f);
-        if(d){ST.pdf[d.month]=d;names.push(d.month+'月');}
+        if(d){
+          ST.pdf[d.month]=d;
+          names.push(d.month+'月');
+          // 取り込んだ月に切り替え
+          ST.s1m=d.month;
+        }
       }
-      updateHmLabel(1,'✅ '+names.join('・')+'取込済',names.join(', '));
+      // 取込済み全月をラベルに表示
+      const allMonths=Object.keys(ST.pdf).map(Number).sort((a,b)=>a-b).map(m=>m+'月');
+      updateHmLabel(1,'✅ '+allMonths.join('・')+'取込済',allMonths.join(', '));
       document.getElementById('dz1').classList.add('loaded');
-      // 取り込んだ月の中で最新月を選択
-      const months=Object.keys(ST.pdf).map(Number).sort((a,b)=>a-b);
-      if(months.length){ST.s1m=months[months.length-1];}
       rS1();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
     }else if(type==='ky'){
       const f=files[0];document.getElementById('fn2').textContent=f.name;document.getElementById('dz2').classList.add('loaded');
@@ -556,12 +560,12 @@ function rS1(){
   document.getElementById('e1').style.display='none';document.getElementById('c1').style.display='block';
   document.getElementById('fb1').style.display='flex';
   const availMonths=Object.keys(ST.pdf).map(Number).sort((a,b)=>a-b);
-  if(!ST.pdf[ST.s1m])ST.s1m=availMonths[availMonths.length-1];
+  if(!(ST.pdf[ST.s1m]||ST.pdf[String(ST.s1m)]))ST.s1m=availMonths[availMonths.length-1];
   document.getElementById('mb1').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>{
-    const has=!!ST.pdf[m];
+    const has=!!(ST.pdf[m]||ST.pdf[String(m)]);
     return `<button class="fb ${m===ST.s1m?'active':''}" onclick="selM1(${m})" ${has?'':'disabled style="opacity:0.35;cursor:not-allowed"'}>${m}月</button>`;
   }).join('');
-  const d=ST.pdf[ST.s1m];if(!d)return;
+  const d=ST.pdf[ST.s1m]||ST.pdf[String(ST.s1m)];if(!d)return;
   const rows=d.rows;
   const tb=rows.reduce((s,r)=>s+r.b,0),ta=rows.reduce((s,r)=>s+r.a,0),df=ta-tb,ar=tb>0?ta/tb:0;
   const ov=rows.filter(r=>r.b>0&&r.a>=r.b),un=rows.filter(r=>r.b>0&&r.a<r.b);
@@ -616,7 +620,7 @@ function rS2(){
 }
 
 let CT,CS2;
-function selM1(m){if(!ST.pdf[m])return;ST.s1m=m;document.querySelectorAll('#mb1 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m+'月'));rS1();}
+function selM1(m){if(!(ST.pdf[m]||ST.pdf[String(m)]))return;ST.s1m=m;document.querySelectorAll('#mb1 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m+'月'));rS1();}
 function selM2(m){
   ST.s2m=m;
   document.querySelectorAll('#mb2 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m));
@@ -729,18 +733,23 @@ function clearData(){
 // --- 印刷①：目標vs実績 ---
 function rP1(month){
   ST.p1m=month;
-  const hasPdf=ST.pdf&&ST.pdf.rows.length;
+  const m=Number(month);
+  const pdfData=ST.pdf[m]||ST.pdf[String(m)];
   const hasYo=ST.yo.length>0;
-  if(!hasPdf&&!hasYo) return;
+  const hasKy=ST.ky&&Object.keys(ST.ky).length>0;
+  if(!pdfData&&!hasYo&&!hasKy) return;
   document.getElementById('ep1').style.display='none';
   document.getElementById('cp1').style.display='block';
-  // 月選択ボタン
-  document.getElementById('mbp1').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>`<button class="fb ${m===month?'active':''}" onclick="selPM1(${m})">${m}月</button>`).join('');
-  document.getElementById('ps1-title').textContent=month+'月度 店舗別 目標・実績一覧';
+  // 月選択ボタン（全月表示、取込済みのみ有効）
+  document.getElementById('mbp1').innerHTML=Array.from({length:12},(_,i)=>i+1).map(n=>{
+    const has=!!(ST.pdf[n]||ST.pdf[String(n)])||hasYo||hasKy;
+    return `<button class="fb ${n===m?'active':''}" onclick="selPM1(${n})" ${has?'':'disabled style="opacity:0.35;cursor:not-allowed"'}>${n}月</button>`;
+  }).join('');
+  document.getElementById('ps1-title').textContent=m+'月度 店舗別 目標・実績一覧';
 
-  // PDFの実績データ
+  // PDFの実績データ（選択月のみ）
   const pdfMap={};
-  if(ST.pdf) ST.pdf.rows.forEach(r=>pdfMap[r.nm]={b:r.b,a:r.a,r:r.r,nb:r.nb,na:r.na,ka:r.ka,ra:r.ra});
+  if(pdfData) pdfData.rows.forEach(r=>pdfMap[r.nm]={b:r.b,a:r.a,r:r.r,nb:r.nb,na:r.na,ka:r.ka,ra:r.ra});
 
   // 予算シートの目標データ
   const yoMap={};
