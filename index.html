@@ -341,7 +341,7 @@ input[type=file]{display:none;}
           <div class="ps-period">仲介営業部</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr;margin-bottom:6px;">
-          <div style="position:relative;height:180px;"><canvas id="chP1"></canvas></div>
+          <div style="position:relative;height:360px;"><canvas id="chP1"></canvas></div>
         </div>
         <div class="ps-wrap"><table class="ps-table" id="pt1"></table></div>
       </div>
@@ -908,12 +908,14 @@ function rP1(month){
     const kyM=ST.ky[m+'月'];
     if(kyM&&kyM.length){
       const kyMp=ST.ky[(m-1)+'月']||ST.ky[m+'月前年']||null;
-      const chartData=kyM.map(s=>{
-        const diff=s.tr-s.trp;
-        // 1文字ずつ配列にして縦表示
+      const rawData=kyM.map(s=>{
         const label=sn(s.nm).split('');
-        return {nm:label,cur:+(s.tr*100).toFixed(1),prev:+(s.trp*100).toFixed(1),diff};
-      }).filter(s=>s.cur>0||s.prev>0).sort((a,b)=>b.diff-a.diff);
+        return {nm:label,cur:+(s.tr*100).toFixed(1),prev:+(s.trp*100).toFixed(1),diff:s.tr-s.trp};
+      }).filter(s=>s.cur>0||s.prev>0);
+      // 前年超え(cur>prev)かつ純契約率高い順 → 前年未満を純契約率高い順
+      const exceeded=rawData.filter(s=>s.cur>=s.prev).sort((a,b)=>b.cur-a.cur);
+      const notExceeded=rawData.filter(s=>s.cur<s.prev).sort((a,b)=>b.cur-a.cur);
+      const chartData=[...exceeded,...notExceeded];
       if(window._chP1)window._chP1.destroy();
       const ctx=document.getElementById('chP1');
       if(ctx){
@@ -922,15 +924,26 @@ function rP1(month){
           data:{
             labels:chartData.map(s=>s.nm),
             datasets:[
-              {label:'当年',data:chartData.map(s=>s.cur),backgroundColor:'rgba(21,101,192,0.8)',borderWidth:0,borderRadius:2},
-              {label:'前年',data:chartData.map(s=>s.prev),backgroundColor:'rgba(21,101,192,0.2)',borderWidth:1,borderColor:'rgba(21,101,192,0.4)',borderRadius:2}
+              {label:'当年',data:chartData.map(s=>s.cur),backgroundColor:chartData.map(s=>s.cur>=s.prev?'rgba(21,101,192,0.85)':'rgba(198,40,40,0.7)'),borderWidth:0,borderRadius:2},
+              {label:'前年',data:chartData.map(s=>s.prev),backgroundColor:'rgba(21,101,192,0.18)',borderWidth:1,borderColor:'rgba(21,101,192,0.4)',borderRadius:2}
             ]
           },
           options:{
             responsive:true,maintainAspectRatio:false,
             plugins:{
               legend:{labels:{color:'#3d5a80',font:{size:9},padding:8}},
-              title:{display:true,text:'純契約率 当年 vs 前年（前年比上昇順）',color:'#1565c0',font:{size:10,weight:'bold'}}
+              title:{display:true,text:'純契約率 当年 vs 前年（前年超え：青／未達：赤、各グループ内は純契約率高い順）',color:'#1565c0',font:{size:10,weight:'bold'}},
+              afterDraw(chart){
+                if(!exceeded.length||!notExceeded.length)return;
+                const ctx2=chart.ctx,xScale=chart.scales.x,yScale=chart.scales.y;
+                const x=xScale.getPixelForValue(exceeded.length-0.5);
+                ctx2.save();
+                ctx2.strokeStyle='rgba(100,100,100,0.5)';
+                ctx2.lineWidth=1.5;
+                ctx2.setLineDash([4,3]);
+                ctx2.beginPath();ctx2.moveTo(x,yScale.top);ctx2.lineTo(x,yScale.bottom);ctx2.stroke();
+                ctx2.restore();
+              }
             },
             scales:{
               x:{ticks:{color:'#7a99ba',font:{size:10},maxRotation:0,minRotation:0},grid:{color:'rgba(0,0,0,0.04)'}},
