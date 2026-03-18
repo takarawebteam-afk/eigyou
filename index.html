@@ -78,7 +78,7 @@ input[type=file]{display:none;}
 .hg-t{font-size:10px;font-weight:700;color:var(--text-light);letter-spacing:0.08em;margin-bottom:6px;}
 .hg-items{display:flex;flex-wrap:wrap;gap:5px;}
 .hi{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
-.hi-g{background:var(--green-pale);color:var(--green);}
+.hi-g{background:var(--blue-pale);color:var(--blue);}
 .hi-r{background:var(--red-pale);color:var(--red);}
 .hg-avg{margin-left:auto;text-align:right;}
 .hg-avg-n{font-size:24px;font-weight:900;color:var(--blue);}
@@ -88,7 +88,7 @@ input[type=file]{display:none;}
 .ytable td{padding:7px 10px;border-bottom:1px solid #eaf2fb;text-align:right;white-space:nowrap;}
 .ytable td:first-child{text-align:left;font-weight:600;}
 .ytable tr:hover td{background:var(--blue-pale);}
-.ytable tr.rt td{background:#f0faf4;}
+.ytable tr.rt td{background:#eef4ff;}
 .ytable tr.rb td{background:#fff5f5;}
 .tbl-s{overflow-x:auto;}
 .rk{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;font-size:10px;font-weight:700;margin-right:5px;}
@@ -96,10 +96,10 @@ input[type=file]{display:none;}
 .rk2{background:linear-gradient(135deg,#9e9e9e,#757575);color:#fff;}
 .rk3{background:linear-gradient(135deg,#8d6e63,#6d4c41);color:#fff;}
 .rko{background:var(--blue-pale);color:var(--text-mid);}
-.bov{display:inline-block;padding:2px 7px;border-radius:10px;background:var(--green-pale);color:var(--green);font-size:10px;font-weight:700;}
+.bov{display:inline-block;padding:2px 7px;border-radius:10px;background:var(--blue-pale);color:var(--blue);font-size:10px;font-weight:700;}
 .bun{display:inline-block;padding:2px 7px;border-radius:10px;background:var(--red-pale);color:var(--red);font-size:10px;font-weight:700;}
 .bne{display:inline-block;padding:2px 7px;border-radius:10px;background:var(--gold-pale);color:var(--gold);font-size:10px;font-weight:700;}
-.ov{color:var(--green);font-weight:700;}
+.ov{color:var(--blue);font-weight:700;}
 .un{color:var(--red);font-weight:700;}
 .ne{color:var(--gold);font-weight:700;}
 .store-grid{display:grid;gap:12px;}
@@ -225,7 +225,7 @@ input[type=file]{display:none;}
       <div class="ls">全社数値表 / 客層分析 / 各店予算</div>
     </div>
   </div>
-  <div class="hperiod" id="hperiod">ファイルをドロップして開始</div>
+  <div class="hperiod" id="hperiod" style="font-size:11px;color:rgba(255,255,255,0.7);margin-left:auto;"></div>
   <button class="share-btn" id="shareBtn" onclick="createShareURL()" style="display:none">🔗 共有リンク作成</button>
   <div class="hmenu-btn" onclick="toggleMenu()"><span></span><span></span><span></span></div>
 </header>
@@ -339,6 +339,9 @@ input[type=file]{display:none;}
         <div class="ps-header">
           <div class="ps-title" id="ps1-title">●月度 店舗別 目標・実績一覧</div>
           <div class="ps-period">仲介営業部</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr;margin-bottom:6px;">
+          <div style="position:relative;height:120px;"><canvas id="chP1"></canvas></div>
         </div>
         <div class="ps-wrap"><table class="ps-table" id="pt1"></table></div>
       </div>
@@ -895,10 +898,44 @@ function rP1(month){
 
   const legend=`<tr style="background:var(--blue-dark)">
     <td class="td-store" style="color:white;font-size:8px">凡例</td>
-    <td colspan="12" style="color:rgba(255,255,255,0.7);font-size:8px;text-align:left">　達成：緑　惜しい(80%以上)：橙　未達：赤</td>
+    <td colspan="12" style="color:rgba(255,255,255,0.7);font-size:8px;text-align:left">　達成：青　惜しい(80%以上)：橙　未達：赤</td>
   </tr>`;
 
   document.getElementById('pt1').innerHTML=head+`<tbody>${rows}${legend}</tbody>`;
+
+  // 純契約率グラフ（前年比上昇順）
+  if(ST.ky){
+    const kyM=ST.ky[m+'月'];
+    if(kyM&&kyM.length){
+      const kyMp=ST.ky[(m-1)+'月']||ST.ky[m+'月前年']||null;
+      const chartData=kyM.map(s=>{
+        const diff=s.tr-s.trp;
+        return {nm:sn(s.nm),cur:+(s.tr*100).toFixed(1),prev:+(s.trp*100).toFixed(1),diff};
+      }).filter(s=>s.cur>0||s.prev>0).sort((a,b)=>b.diff-a.diff);
+      if(window._chP1)window._chP1.destroy();
+      const ctx=document.getElementById('chP1');
+      if(ctx){
+        window._chP1=new Chart(ctx.getContext('2d'),{
+          type:'bar',
+          data:{
+            labels:chartData.map(s=>s.nm),
+            datasets:[
+              {label:'当年',data:chartData.map(s=>s.cur),backgroundColor:'rgba(21,101,192,0.8)',borderWidth:0,borderRadius:2},
+              {label:'前年',data:chartData.map(s=>s.prev),backgroundColor:'rgba(21,101,192,0.2)',borderWidth:1,borderColor:'rgba(21,101,192,0.4)',borderRadius:2}
+            ]
+          },
+          options:{
+            responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{labels:{color:'#3d5a80',font:{size:9},padding:8}},title:{display:true,text:'純契約率 当年 vs 前年（前年比上昇順）',color:'#1565c0',font:{size:10,weight:'bold'}}},
+            scales:{
+              x:{ticks:{color:'#7a99ba',font:{size:9},maxRotation:90,minRotation:90},grid:{color:'rgba(0,0,0,0.04)'}},
+              y:{ticks:{color:'#7a99ba',font:{size:8},callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.04)'},max:Math.max(...chartData.map(s=>Math.max(s.cur,s.prev)))+10}
+            }
+          }
+        });
+      }
+    }
+  }
 }
 
 function selPM1(m){ST.p1m=m;rP1(m);}
