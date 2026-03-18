@@ -238,8 +238,8 @@ input[type=file]{display:none;}
         ondragleave="this.classList.remove('dragover')"
         ondrop="this.classList.remove('dragover');hfDrop(event,'zs')">
         <span class="hmenu-file-icon">📊</span>
-        <div><div>全社数値表 Excel</div><span class="hmenu-file-name" id="hmfn1">全店一覧_数値表.xlsm</span></div>
-        <input type="file" accept=".xlsx,.xlsm,.xls" onchange="hf(event,'zs');closeMenu();" style="display:none">
+        <div><div>全社数値表 Excel</div><span class="hmenu-file-name" id="hmfn1">複数月まとめてドロップOK</span></div>
+        <input type="file" accept=".xlsx,.xlsm,.xls" multiple onchange="hf(event,'zs');closeMenu();" style="display:none">
       </label>
       <label class="hmenu-file-btn" id="hmlbl2"
         ondragover="event.preventDefault();this.classList.add('dragover')"
@@ -371,7 +371,7 @@ input[type=file]{display:none;}
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-const ST={pdf:null,ky:null,yo:[],s1m:new Date().getMonth()+1,s2m:null,s3m:new Date().getMonth()+1,p1m:new Date().getMonth()+1,p2m:new Date().getMonth()+1};
+const ST={pdf:{},ky:null,yo:[],s1m:new Date().getMonth()+1,s2m:null,s3m:new Date().getMonth()+1,p1m:new Date().getMonth()+1,p2m:new Date().getMonth()+1};
 
 function saveLS(){
   try{
@@ -392,9 +392,15 @@ function loadLS(){
     const fn1=localStorage.getItem('st_fn1');
     const fn2=localStorage.getItem('st_fn2');
     const fn3=localStorage.getItem('st_fn3');
-    if(pd){ST.pdf=JSON.parse(pd);
-      if(fn1){document.getElementById('fn1').textContent=fn1;updateHmLabel(1,'✅ '+fn1,fn1);}
-      document.getElementById('dz1').classList.add('loaded');rS1();rP1(ST.p1m);}
+    if(pd){
+      const parsed=JSON.parse(pd);
+      // 旧形式（rows直下）は無視して新形式（月番号キー）のみ受け付ける
+      if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)&&!parsed.rows){
+        ST.pdf=parsed;
+        if(fn1){updateHmLabel(1,'✅ '+fn1,fn1);}
+        document.getElementById('dz1').classList.add('loaded');rS1();rP1(ST.p1m);
+      }
+    }
     if(ky){ST.ky=JSON.parse(ky);
       if(fn2){document.getElementById('fn2').textContent=fn2;updateHmLabel(2,'✅ '+fn2,fn2);}
       document.getElementById('dz2').classList.add('loaded');rS2();rP2(ST.p2m);}
@@ -430,10 +436,17 @@ async function pf(files,type){
   sl();
   try{
     if(type==='zs'){
-      const f=files[0];
-      document.getElementById('fn1').textContent=f.name;document.getElementById('dz1').classList.add('loaded');
-      updateHmLabel(1,'✅ '+f.name,f.name);
-      ST.pdf=await parseZensha(f);rS1();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
+      const names=[];
+      for(const f of files){
+        const d=await parseZensha(f);
+        if(d){ST.pdf[d.month]=d;names.push(d.month+'月');}
+      }
+      updateHmLabel(1,'✅ '+names.join('・')+'取込済',names.join(', '));
+      document.getElementById('dz1').classList.add('loaded');
+      // 取り込んだ月の中で最新月を選択
+      const months=Object.keys(ST.pdf).map(Number).sort((a,b)=>a-b);
+      if(months.length){ST.s1m=months[months.length-1];}
+      rS1();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
     }else if(type==='ky'){
       const f=files[0];document.getElementById('fn2').textContent=f.name;document.getElementById('dz2').classList.add('loaded');
       updateHmLabel(2,'✅ '+f.name,f.name);
@@ -457,11 +470,15 @@ async function parseZensha(file){
   const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
   const sv=v=>(v==null||v==='-'||typeof v==='string')?0:Number(v);
 
-  // H1から月を取得（列8=index7）
+  // H1から月・期間テキストを取得
   const h1=data[0]?data[0][7]:null;
   const periodText=h1?String(h1):'';
 
-  // 店舗別の行マッピング（1-indexed → array index = row-1）
+  // ファイル名 or periodText から月番号を抽出（例: "3月" "2026年3月" "03" など）
+  const src=file.name+' '+periodText;
+  const mMatch=src.match(/(\d{1,2})月/);
+  const month=mMatch?parseInt(mMatch[1]):new Date().getMonth()+1;
+
   const STORE_ROWS=[
     {nm:'西宮北店', r:8},{nm:'JR西宮店', r:9},{nm:'塚口店', r:10},
     {nm:'守口店', r:15},{nm:'寝屋川店', r:16},{nm:'枚方店', r:17},{nm:'高槻店', r:18},
@@ -469,28 +486,26 @@ async function parseZensha(file){
     {nm:'瓢箪山店', r:29},{nm:'長田店', r:30},{nm:'布施店', r:31},{nm:'小阪店', r:32},{nm:'長瀬店', r:33},
     {nm:'八尾店', r:36},{nm:'深井店', r:37},
   ];
-  // 全店合計行
-  const totalRow=data[72]||[];
 
   const rows=STORE_ROWS.map(({nm,r})=>{
     const row=data[r-1]||[];
-    const b=sv(row[2]);   // C列: 売上予算
-    const a=sv(row[3]);   // D列: 売上実績
-    const nb=sv(row[22]); // W列: 新規目標
-    const na=sv(row[23]); // X列: 新規実績
-    const ka=sv(row[38]); // AM列: 契約本数実績
-    const ra=sv(row[40]); // AO列: 純契約率実績
+    const b=sv(row[2]);
+    const a=sv(row[3]);
+    const nb=sv(row[22]);
+    const na=sv(row[23]);
+    const ka=sv(row[38]);
+    const ra=sv(row[40]);
     return {nm,b,a,r:b>0?a/b:0,nb,na,ka,ra};
   });
 
-  // 全社合計
+  const totalRow=data[72]||[];
   const total={
     b:sv(totalRow[2]),a:sv(totalRow[3]),
     nb:sv(totalRow[22]),na:sv(totalRow[23]),
     ka:sv(totalRow[38]),ra:sv(totalRow[40]),
   };
 
-  return {rows,total,period:periodText};
+  return {rows,total,period:periodText,month};
 }
 
 async function parseKy(file){
@@ -537,12 +552,16 @@ async function parseYo(file){
 }
 
 function rS1(){
-  const d=ST.pdf;if(!d||!d.rows.length)return;
+  if(!Object.keys(ST.pdf).length)return;
   document.getElementById('e1').style.display='none';document.getElementById('c1').style.display='block';
-  // fb1の月選択ボタン（1〜12月）
   document.getElementById('fb1').style.display='flex';
-  const curM=ST.s1m||new Date().getMonth()+1;
-  document.getElementById('mb1').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>`<button class="fb ${m===curM?'active':''}" onclick="selM1(${m})">${m}月</button>`).join('');
+  const availMonths=Object.keys(ST.pdf).map(Number).sort((a,b)=>a-b);
+  if(!ST.pdf[ST.s1m])ST.s1m=availMonths[availMonths.length-1];
+  document.getElementById('mb1').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>{
+    const has=!!ST.pdf[m];
+    return `<button class="fb ${m===ST.s1m?'active':''}" onclick="selM1(${m})" ${has?'':'disabled style="opacity:0.35;cursor:not-allowed"'}>${m}月</button>`;
+  }).join('');
+  const d=ST.pdf[ST.s1m];if(!d)return;
   const rows=d.rows;
   const tb=rows.reduce((s,r)=>s+r.b,0),ta=rows.reduce((s,r)=>s+r.a,0),df=ta-tb,ar=tb>0?ta/tb:0;
   const ov=rows.filter(r=>r.b>0&&r.a>=r.b),un=rows.filter(r=>r.b>0&&r.a<r.b);
@@ -597,7 +616,7 @@ function rS2(){
 }
 
 let CT,CS2;
-function selM1(m){ST.s1m=m;document.querySelectorAll('#mb1 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m+'月'));rS1();}
+function selM1(m){if(!ST.pdf[m])return;ST.s1m=m;document.querySelectorAll('#mb1 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m+'月'));rS1();}
 function selM2(m){
   ST.s2m=m;
   document.querySelectorAll('#mb2 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m));
