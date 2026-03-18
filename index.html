@@ -27,11 +27,11 @@ header{background:linear-gradient(135deg,var(--blue-dark) 0%,var(--blue-mid) 60%
 .lt2{color:white;font-size:15px;font-weight:700;}
 .ls{font-size:9px;color:rgba(255,255,255,0.75);margin-top:1px;}
 .hperiod{font-size:11px;color:rgba(255,255,255,0.85);}
-.main-tabs{background:var(--blue-dark);display:flex;}
+.main-tabs{background:var(--blue-dark);display:flex;position:sticky;top:52px;z-index:99;}
 .main-tab{padding:13px 28px;border:none;background:transparent;color:rgba(255,255,255,0.55);font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .2s;border-bottom:3px solid transparent;}
 .main-tab:hover{color:white;background:rgba(255,255,255,0.06);}
 .main-tab.active{color:white;border-bottom-color:var(--sky);background:rgba(255,255,255,0.1);font-weight:700;}
-.fbar{background:white;border-bottom:2px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 1px 4px rgba(21,101,192,0.06);}
+.fbar{background:white;border-bottom:2px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 1px 4px rgba(21,101,192,0.06);position:sticky;top:92px;z-index:98;}
 .flbl{font-size:11px;font-weight:700;color:var(--text-mid);letter-spacing:0.08em;white-space:nowrap;}
 .fgrp{display:flex;gap:4px;flex-wrap:wrap;}
 .fb{padding:5px 14px;border:1.5px solid var(--border);border-radius:20px;background:white;color:var(--text-mid);font-family:'Noto Sans JP',sans-serif;font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap;}
@@ -102,6 +102,14 @@ input[type=file]{display:none;}
 .un{color:var(--red);font-weight:700;}
 .ne{color:var(--gold);font-weight:700;}
 .store-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.area-section{margin-bottom:24px;}
+.area-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;}
+.area-hyogo{background:#e8f4fd;border-left:4px solid #1565c0;color:#1565c0;}
+.area-keihoku{background:#e8f5e9;border-left:4px solid #2e7d32;color:#2e7d32;}
+.area-chuo{background:#fff8e1;border-left:4px solid #f5a623;color:#b7791f;}
+.area-higashi{background:#fce4ec;border-left:4px solid #c62828;color:#c62828;}
+.area-minami{background:#f3e5f5;border-left:4px solid #6a1b9a;color:#6a1b9a;}
+.area-count{font-size:11px;font-weight:500;opacity:0.75;margin-left:4px;}
 .sc{background:white;border:1px solid var(--border);border-radius:10px;padding:15px 17px;box-shadow:var(--shadow);}
 .sc.sov{border-top:3px solid var(--green);}
 .sc.sun{border-top:3px solid var(--red);}
@@ -630,29 +638,48 @@ function rS3(){
 
 function selM3(m){ST.s3m=m;document.querySelectorAll('#mb3 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m+'月'));rCards(m);}
 
+const AREAS=[
+  {key:'hyogo', label:'🔵 兵庫エリア', cls:'area-hyogo', stores:['西宮北店','JR西宮店','塚口店']},
+  {key:'keihoku', label:'🟢 京北エリア', cls:'area-keihoku', stores:['寝屋川店','高槻店','守口店','枚方店']},
+  {key:'chuo', label:'🟡 中央エリア', cls:'area-chuo', stores:['大阪駅前店','京橋駅前店','はなてん店','淡路店']},
+  {key:'higashi', label:'🔴 東エリア', cls:'area-higashi', stores:['布施店','瓢箪山店','長瀬店','小阪店','長田店']},
+  {key:'minami', label:'🟣 南エリア', cls:'area-minami', stores:['八尾店','深井店']},
+];
+
+function makeCard(store,month){
+  const md=store.m[month];if(!md)return'';
+  const tgt=md.tr;
+  const km=ST.ky?ST.ky[month+'月']:null;
+  const ks=km?km.find(s=>s.nm===store.n||store.n.includes(s.nm)||s.nm.includes(store.n)):null;
+  const act=ks?ks.tr:null;
+  const ach=act!==null&&tgt>0?act/tgt:null;
+  const isOv=ach!==null&&ach>=1,isNe=ach!==null&&ach>=0.8&&ach<1;
+  const cc=act===null?'sno':isOv?'sov':isNe?'sne':'sun';
+  const bw=act!==null&&tgt>0?Math.min(act/tgt*100,100):0;
+  const bc=isOv?'bov':isNe?'bne':'bun';
+  const rc=isOv?'var(--green)':isNe?'var(--gold)':'var(--red)';
+  return `<div class="sc ${cc}">
+    <div class="sc-nm">${store.n}${ach!==null?(isOv?'<span class="bov">✓ 達成</span>':isNe?'<span class="bne">惜しい</span>':'<span class="bun">未達</span>'):''}
+    </div>
+    <div class="sc-tl">純契約率目標（${month}月）</div>
+    <div class="sc-tv">${tgt>0?(tgt*100).toFixed(1)+'%':'未設定'}</div>
+    ${act!==null?`<div class="sc-tl">実績</div><div class="sc-bw"><div class="sc-bg"><div class="sc-b ${bc}" style="width:${bw}%"></div></div><div class="sc-rv" style="color:${rc}">${(act*100).toFixed(1)}%</div></div><div class="sc-ac">目標達成率: <strong style="color:${rc}">${(ach*100).toFixed(1)}%</strong>　新規${ks.ts}件 / 契約${ks.tk}件</div>`:`<div style="font-size:11px;color:var(--text-light)">← 客層分析表をドロップすると実績が表示されます</div>`}
+    <div class="sc-ft">目標: 新規${md.ts}件 / 契約${md.tk}件</div>
+  </div>`;
+}
+
 function rCards(month){
-  const html=ST.yo.map(store=>{
-    const md=store.m[month];if(!md)return'';
-    const tgt=md.tr;
-    const km=ST.ky?ST.ky[month+'月']:null;
-    const ks=km?km.find(s=>s.nm===store.n||store.n.includes(s.nm)||s.nm.includes(store.n)):null;
-    const act=ks?ks.tr:null;
-    const ach=act!==null&&tgt>0?act/tgt:null;
-    const isOv=ach!==null&&ach>=1,isNe=ach!==null&&ach>=0.8&&ach<1;
-    const cc=act===null?'sno':isOv?'sov':isNe?'sne':'sun';
-    const bw=act!==null&&tgt>0?Math.min(act/tgt*100,100):0;
-    const bc=isOv?'bov':isNe?'bne':'bun';
-    const rc=isOv?'var(--green)':isNe?'var(--gold)':'var(--red)';
-    return `<div class="sc ${cc}">
-      <div class="sc-nm">${store.n}${ach!==null?(isOv?'<span class="bov">✓ 達成</span>':isNe?'<span class="bne">惜しい</span>':'<span class="bun">未達</span>'):''}
-      </div>
-      <div class="sc-tl">純契約率目標（${month}月）</div>
-      <div class="sc-tv">${tgt>0?(tgt*100).toFixed(1)+'%':'未設定'}</div>
-      ${act!==null?`<div class="sc-tl">実績</div><div class="sc-bw"><div class="sc-bg"><div class="sc-b ${bc}" style="width:${bw}%"></div></div><div class="sc-rv" style="color:${rc}">${(act*100).toFixed(1)}%</div></div><div class="sc-ac">目標達成率: <strong style="color:${rc}">${(ach*100).toFixed(1)}%</strong>　新規${ks.ts}件 / 契約${ks.tk}件</div>`:`<div style="font-size:11px;color:var(--text-light)">← 客層分析表をドロップすると実績が表示されます</div>`}
-      <div class="sc-ft">目標: 新規${md.ts}件 / 契約${md.tk}件</div>
+  const html=AREAS.map(area=>{
+    const areaStores=area.stores.map(nm=>ST.yo.find(s=>s.n===nm||nm.includes(s.n)||s.n.includes(nm))).filter(Boolean);
+    if(!areaStores.length)return'';
+    const cards=areaStores.map(s=>makeCard(s,month)).join('');
+    if(!cards.trim())return'';
+    return `<div class="area-section">
+      <div class="area-header ${area.cls}">${area.label}<span class="area-count">（${areaStores.length}店舗）</span></div>
+      <div class="store-grid">${cards}</div>
     </div>`;
   }).join('');
-  document.getElementById('sg').innerHTML=html;
+  document.getElementById('sg').innerHTML=html||'<div class="empty"><div class="empty-i">🏪</div><div class="empty-t">データなし</div></div>';
 }
 
 function sl(){const b=document.getElementById('lbar');b.style.display='block';b.style.width='70%';}
