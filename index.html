@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -200,10 +201,15 @@ input[type=file]{display:none;}
 .hmenu-file-btn.loaded .hmenu-file-name{color:var(--green);}
 .hmenu-reset{width:100%;padding:11px;border:1.5px solid var(--red);border-radius:8px;background:white;color:var(--red);font-family:'Noto Sans JP',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
 .hmenu-reset:hover{background:var(--red-pale);}
+.share-btn{display:flex;align-items:center;gap:6px;padding:7px 16px;background:rgba(255,255,255,0.2);border:1.5px solid rgba(255,255,255,0.6);border-radius:20px;color:white;font-family:'Noto Sans JP',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.share-btn:hover{background:rgba(255,255,255,0.35);}
+.share-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1565c0;color:white;padding:12px 24px;border-radius:24px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(21,101,192,0.4);opacity:0;transition:opacity .3s;pointer-events:none;}
+.share-toast.show{opacity:1;}
 </style>
 </head>
 <body>
 <div class="lbar" id="lbar"></div>
+<div class="share-toast" id="shareToast"></div>
 <span id="fn1" style="display:none"></span>
 <span id="fn2" style="display:none"></span>
 <span id="fn3" style="display:none"></span>
@@ -220,6 +226,7 @@ input[type=file]{display:none;}
     </div>
   </div>
   <div class="hperiod" id="hperiod">ファイルをドロップして開始</div>
+  <button class="share-btn" id="shareBtn" onclick="createShareURL()" style="display:none">🔗 共有リンク作成</button>
   <div class="hmenu-btn" onclick="toggleMenu()"><span></span><span></span><span></span></div>
 </header>
 
@@ -410,7 +417,10 @@ function loadLS(){
   }catch(e){console.warn('復元失敗',e);}
 }
 
-window.addEventListener('load',()=>loadLS());
+window.addEventListener('load',()=>{
+  if(!restoreFromURL()) loadLS();
+  updateShareBtn();
+});
 const STORES=['西宮北店','JR西宮店','塚口店','守口店','寝屋川店','枚方店','高槻店','大阪駅前店','はなてん店','京橋駅前店','淡路店','瓢箪山店','長田店','布施店','小阪店','長瀬店','八尾店','深井店'];
 
 function switchTab(id){
@@ -464,6 +474,7 @@ async function pf(files,type){
     }
   }catch(ex){console.error(ex);alert('エラー: '+ex.message);}
   hl();
+  updateShareBtn();
 }
 
 async function parseZensha(file){
@@ -594,20 +605,31 @@ function bTbl(rows,isOv){
     const df=r.a-r.b,rkc=i===0?'rk1':i===1?'rk2':i===2?'rk3':'rko';
     const ac=r.r>=1?'ov':r.r>=0.9?'ne':'un';
     const bd=r.r>=1?`<span class="bov">達成</span>`:r.r>=0.9?`<span class="bne">惜しい</span>`:`<span class="bun">未達</span>`;
-    return `<tr class="${isOv?'rt':'rb'}"><td><span class="rk ${rkc}">${i+1}</span>${r.nm}</td><td>${r.b.toLocaleString()}</td><td>${r.a.toLocaleString()}</td><td class="${df>=0?'ov':'un'}">${df>=0?'+':''}${df.toLocaleString()}</td><td class="${ac}">${(r.r*100).toFixed(1)}% ${bd}</td></tr>`;
+    const dfCls=df>=0?'style="color:var(--blue)"':'un';
+    return `<tr class="${isOv?'rt':'rb'}"><td><span class="rk ${rkc}">${i+1}</span>${r.nm}</td><td>${r.b.toLocaleString()}</td><td>${r.a.toLocaleString()}</td><td ${dfCls}>${df>=0?'+':''}${df.toLocaleString()}</td><td class="${ac}">${(r.r*100).toFixed(1)}% ${bd}</td></tr>`;
   }).join('');
   return h+`<tbody>${b}</tbody>`;
 }
 
+// 店舗名短縮マップ
+const SHORT_NM={
+  '西宮北店':'西北','JR西宮店':'JR西宮','塚口店':'塚口',
+  '寝屋川店':'寝屋川','高槻店':'高槻','守口店':'守口','枚方店':'枚方',
+  '大阪駅前店':'大阪','はなてん店':'放出','京橋駅前店':'京橋','淡路店':'淡路',
+  '布施店':'布施','長田店':'長田','瓢箪山店':'瓢箪','長瀬店':'長瀬',
+  '小阪店':'小阪','八尾店':'八尾','深井店':'深井','新大阪営業所':'新大阪',
+};
+function sn(nm){return SHORT_NM[nm]||nm;}
+
 let CS,CA;
 function rChS(rows){
   if(CS)CS.destroy();
-  CS=new Chart(document.getElementById('chS').getContext('2d'),{type:'bar',data:{labels:rows.map(r=>r.nm),datasets:[{label:'予算',data:rows.map(r=>r.b),backgroundColor:'rgba(21,101,192,0.2)',borderColor:'rgba(21,101,192,0.5)',borderWidth:1},{label:'実績',data:rows.map(r=>r.a),backgroundColor:rows.map(r=>r.a>=r.b?'rgba(46,125,50,0.7)':'rgba(198,40,40,0.7)'),borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#3d5a80',font:{size:11}}}},scales:{x:{ticks:{color:'#7a99ba',font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#7a99ba',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  CS=new Chart(document.getElementById('chS').getContext('2d'),{type:'bar',data:{labels:rows.map(r=>r.nm),datasets:[{label:'予算',data:rows.map(r=>r.b),backgroundColor:'rgba(21,101,192,0.2)',borderColor:'rgba(21,101,192,0.5)',borderWidth:1},{label:'実績',data:rows.map(r=>r.a),backgroundColor:rows.map(r=>r.a>=r.b?'rgba(21,101,192,0.75)':'rgba(198,40,40,0.7)'),borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#3d5a80',font:{size:11}}}},scales:{x:{ticks:{color:'#7a99ba',font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#7a99ba',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}}}}});
 }
 function rChA(rows){
   if(CA)CA.destroy();
   const u80=rows.filter(r=>r.b>0&&r.r<0.8).length,u100=rows.filter(r=>r.b>0&&r.r>=0.8&&r.r<1).length,o100=rows.filter(r=>r.b>0&&r.r>=1).length;
-  CA=new Chart(document.getElementById('chA').getContext('2d'),{type:'doughnut',data:{labels:['80%未満','80〜100%','100%以上'],datasets:[{data:[u80,u100,o100],backgroundColor:['rgba(198,40,40,0.8)','rgba(245,166,35,0.8)','rgba(46,125,50,0.8)'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#3d5a80',font:{size:11},padding:12}}}}});
+  CA=new Chart(document.getElementById('chA').getContext('2d'),{type:'doughnut',data:{labels:['80%未満','80〜100%','100%以上'],datasets:[{data:[u80,u100,o100],backgroundColor:['rgba(198,40,40,0.8)','rgba(245,166,35,0.8)','rgba(21,101,192,0.8)'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#3d5a80',font:{size:11},padding:12}}}}});
 }
 
 function rS2(){
@@ -644,10 +666,10 @@ function selM2(m){
     <div><div class="hg-t">⚠️ 苦戦店舗（全社平均-10%以下）</div><div class="hg-items">${bs.map(s=>`<span class="hi hi-r">${s.nm} ${(s.tr*100).toFixed(1)}%</span>`).join('')||'<span style="color:var(--text-light);font-size:11px">該当なし</span>'}</div></div>
     <div class="hg-avg"><div class="hg-t">全社平均</div><div class="hg-avg-n">${(avg*100).toFixed(1)}%</div></div>`;
   if(CT)CT.destroy();
-  CT=new Chart(document.getElementById('chT').getContext('2d'),{type:'bar',data:{labels:['単身','新婚(同棲)','家族'],datasets:[{label:'純契約率',data:[tan.s>0?+(tan.k/tan.s*100).toFixed(1):0,shi.s>0?+(shi.k/shi.s*100).toFixed(1):0,kaz.s>0?+(kaz.k/kaz.s*100).toFixed(1):0],backgroundColor:['rgba(21,101,192,0.7)','rgba(41,182,246,0.7)','rgba(46,125,50,0.7)'],borderWidth:0,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a99ba'},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#7a99ba',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.04)'},max:100}}}});
+  CT=new Chart(document.getElementById('chT').getContext('2d'),{type:'bar',data:{labels:['単身','新婚(同棲)','家族'],datasets:[{label:'純契約率',data:[tan.s>0?+(tan.k/tan.s*100).toFixed(1):0,shi.s>0?+(shi.k/shi.s*100).toFixed(1):0,kaz.s>0?+(kaz.k/kaz.s*100).toFixed(1):0],backgroundColor:['rgba(21,101,192,0.7)','rgba(41,182,246,0.7)','rgba(46,125,50,0.7)'],borderWidth:0,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:()=>`全社平均: ${(avg*100).toFixed(1)}%`}}},scales:{x:{ticks:{color:'#7a99ba'},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#7a99ba',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.04)'},max:100,afterDraw(chart){const ctx=chart.ctx,yScale=chart.scales.y,xScale=chart.scales.x;const y=yScale.getPixelForValue(avg*100);ctx.save();ctx.strokeStyle='rgba(198,40,40,0.7)';ctx.lineWidth=2;ctx.setLineDash([5,3]);ctx.beginPath();ctx.moveTo(xScale.left,y);ctx.lineTo(xScale.right,y);ctx.stroke();ctx.fillStyle='rgba(198,40,40,0.9)';ctx.font='bold 10px sans-serif';ctx.fillText('全社平均 '+(avg*100).toFixed(1)+'%',xScale.left+4,y-5);ctx.restore();}}}}});
   if(CS2)CS2.destroy();
   const srt=[...stores].filter(s=>s.ts>0).sort((a,b)=>b.tr-a.tr);
-  CS2=new Chart(document.getElementById('chS2').getContext('2d'),{type:'bar',data:{labels:srt.map(s=>s.nm),datasets:[{label:'当年',data:srt.map(s=>+(s.tr*100).toFixed(1)),backgroundColor:'rgba(21,101,192,0.75)',borderWidth:0,borderRadius:3},{label:'前年',data:srt.map(s=>+(s.trp*100).toFixed(1)),backgroundColor:'rgba(21,101,192,0.2)',borderWidth:1,borderColor:'rgba(21,101,192,0.4)',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#3d5a80',font:{size:11}}}},scales:{x:{ticks:{color:'#7a99ba',font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#7a99ba',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  CS2=new Chart(document.getElementById('chS2').getContext('2d'),{type:'bar',data:{labels:srt.map(s=>sn(s.nm)),datasets:[{label:'当年',data:srt.map(s=>+(s.tr*100).toFixed(1)),backgroundColor:'rgba(21,101,192,0.75)',borderWidth:0,borderRadius:3},{label:'前年',data:srt.map(s=>+(s.trp*100).toFixed(1)),backgroundColor:'rgba(21,101,192,0.2)',borderWidth:1,borderColor:'rgba(21,101,192,0.4)',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#3d5a80',font:{size:11}}}},scales:{x:{ticks:{color:'#7a99ba',font:{size:10},maxRotation:90,minRotation:90},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{color:'#7a99ba',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.04)'}}}}});
   const tr2=srt.map((s,i)=>{
     const tnr=s.tn.s>0?s.tn.k/s.tn.s:null,shr=s.sh.s>0?s.sh.k/s.sh.s:null,kzr=s.kz.s>0?s.kz.k/s.kz.s:null;
     const df=s.tr-s.trp,rkc=i===0?'rk1':i===1?'rk2':i===2?'rk3':'rko';
@@ -727,7 +749,72 @@ function updateHmLabel(id,text,fname){
 function clearData(){
   if(!confirm('取り込んだデータをすべてリセットしますか？')) return;
   localStorage.clear();
-  location.reload();
+  location.href=location.pathname;
+}
+
+// --- 共有URL作成 ---
+function createShareURL(){
+  const payload={pdf:ST.pdf,ky:ST.ky,yo:ST.yo};
+  try{
+    const json=JSON.stringify(payload);
+    const compressed=LZString.compressToEncodedURIComponent(json);
+    const url=location.origin+location.pathname+'#data='+compressed;
+    navigator.clipboard.writeText(url).then(()=>{
+      showToast('🔗 共有リンクをコピーしました！');
+    }).catch(()=>{
+      prompt('以下のURLをコピーしてください：',url);
+    });
+  }catch(e){alert('URLの生成に失敗しました: '+e.message);}
+}
+
+// --- URL復元 ---
+function restoreFromURL(){
+  const hash=location.hash;
+  if(!hash.startsWith('#data='))return false;
+  try{
+    const compressed=hash.slice(6);
+    const json=LZString.decompressFromEncodedURIComponent(compressed);
+    if(!json)return false;
+    const payload=JSON.parse(json);
+    if(payload.pdf&&Object.keys(payload.pdf).length){
+      ST.pdf=payload.pdf;
+      const months=Object.keys(ST.pdf).map(Number).sort((a,b)=>a-b);
+      ST.s1m=months[months.length-1];
+      const allMonths=months.map(m=>m+'月');
+      updateHmLabel(1,'✅ '+allMonths.join('・')+'取込済',allMonths.join(', '));
+      document.getElementById('dz1').classList.add('loaded');
+    }
+    if(payload.ky){
+      ST.ky=payload.ky;
+      updateHmLabel(2,'✅ 共有データより復元','共有データ');
+      document.getElementById('dz2').classList.add('loaded');
+    }
+    if(payload.yo&&payload.yo.length){
+      ST.yo=payload.yo;
+      updateHmLabel(3,'✅ '+ST.yo.length+'店舗（共有データ）','共有データ');
+      document.getElementById('dz3').classList.add('loaded');
+    }
+    // 全部レンダリング
+    if(Object.keys(ST.pdf).length)rS1();
+    if(ST.ky)rS2();
+    if(ST.yo.length)rS3();
+    rP1(ST.p1m||new Date().getMonth()+1);
+    rP2(ST.p2m||new Date().getMonth()+1);
+    showToast('🔗 共有リンクからデータを復元しました！');
+    // ハッシュをURLからは消さない（再共有できるように）
+    return true;
+  }catch(e){console.warn('URL復元失敗',e);return false;}
+}
+
+function showToast(msg){
+  const t=document.getElementById('shareToast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function updateShareBtn(){
+  const hasData=Object.keys(ST.pdf).length||ST.ky||ST.yo.length;
+  document.getElementById('shareBtn').style.display=hasData?'flex':'none';
 }
 
 // --- 印刷①：目標vs実績 ---
