@@ -592,7 +592,7 @@ function renderMonthBar(){
   if(!bar)return;
   if(!avail.length){bar.style.display='none';return;}
   bar.style.display='flex';
-  if(!ST.selMonths.size) ST.selMonths.add(avail[avail.length-1]);
+  if(!ST.selMonths.size) ST.selMonths.add(avail[0]); // 最初の月を初期選択
   document.getElementById('mb-global').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>{
     const has=avail.includes(m);
     const sel=ST.selMonths.has(m);
@@ -618,7 +618,7 @@ function toggleMonth(m){
 function clearMonthSel(){
   const avail=getAvailableMonths();
   ST.selMonths.clear();
-  if(avail.length) ST.selMonths.add(avail[avail.length-1]);
+  if(avail.length) ST.selMonths.add(avail[0]); // 最初の月をデフォルト
   renderMonthBar();
   renderCurrentTab();
 }
