@@ -384,12 +384,17 @@ const ST={pdf:{},ky:null,yo:[],s1m:new Date().getMonth()+1,s2m:null,s3m:new Date
 
 function saveLS(){
   try{
-    if(ST.pdf) localStorage.setItem('st_pdf',JSON.stringify(ST.pdf));
+    if(Object.keys(ST.pdf).length) localStorage.setItem('st_pdf',JSON.stringify(ST.pdf));
     if(ST.ky) localStorage.setItem('st_ky',JSON.stringify(ST.ky));
     if(ST.yo.length) localStorage.setItem('st_yo',JSON.stringify(ST.yo));
-    localStorage.setItem('st_fn1',document.getElementById('fn1').textContent);
-    localStorage.setItem('st_fn2',document.getElementById('fn2').textContent);
-    localStorage.setItem('st_fn3',document.getElementById('fn3').textContent);
+    // ラベル保存
+    const lbl1=document.getElementById('hmfn1');
+    const lbl2=document.getElementById('hmfn2');
+    const lbl3=document.getElementById('hmfn3');
+    if(lbl1) localStorage.setItem('st_fn1',lbl1.textContent);
+    if(lbl2) localStorage.setItem('st_fn2',lbl2.textContent);
+    if(lbl3) localStorage.setItem('st_fn3',lbl3.textContent);
+    console.log('saveLS OK - pdf months:', Object.keys(ST.pdf), 'ky:', !!ST.ky, 'yo:', ST.yo.length);
   }catch(e){console.warn('保存失敗',e);}
 }
 
@@ -401,6 +406,7 @@ function loadLS(){
     const fn1=localStorage.getItem('st_fn1');
     const fn2=localStorage.getItem('st_fn2');
     const fn3=localStorage.getItem('st_fn3');
+    console.log('loadLS - pdf:', !!pd, 'ky:', !!ky, 'yo:', !!yo);
     if(pd){
       const parsed=JSON.parse(pd);
       if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)&&!parsed.rows){
@@ -408,17 +414,24 @@ function loadLS(){
         const months=Object.keys(ST.pdf).map(Number).sort((a,b)=>a-b);
         ST.s1m=months[months.length-1];
         ST.selMonths.add(ST.s1m);
-        if(fn1){updateHmLabel(1,'✅ '+fn1,fn1);}
-        document.getElementById('dz1').classList.add('loaded');rS1();rP1(ST.p1m);
+        if(fn1) updateHmLabel(1,'✅ '+fn1,fn1);
+        document.getElementById('dz1').classList.add('loaded');
+        rS1();rP1(ST.p1m);
       }
     }
-    if(ky){ST.ky=JSON.parse(ky);
-      if(fn2){document.getElementById('fn2').textContent=fn2;updateHmLabel(2,'✅ '+fn2,fn2);}
+    if(ky){
+      ST.ky=JSON.parse(ky);
+      if(fn2) updateHmLabel(2,'✅ '+fn2,fn2);
       Object.keys(ST.ky).filter(k=>ST.ky[k]?.length).forEach(k=>ST.selMonths.add(parseInt(k)));
-      document.getElementById('dz2').classList.add('loaded');rS2();rP2(ST.p2m);}
-    if(yo){ST.yo=JSON.parse(yo);
-      if(fn3){document.getElementById('fn3').textContent=fn3;updateHmLabel(3,'✅ '+fn3,fn3);}
-      document.getElementById('dz3').classList.add('loaded');rS3();rP1(ST.p1m);}
+      document.getElementById('dz2').classList.add('loaded');
+      rS2();rP2(ST.p2m);
+    }
+    if(yo){
+      ST.yo=JSON.parse(yo);
+      if(fn3) updateHmLabel(3,'✅ '+fn3,fn3);
+      document.getElementById('dz3').classList.add('loaded');
+      rS3();rP1(ST.p1m);
+    }
     renderMonthBar();
   }catch(e){console.warn('復元失敗',e);}
 }
