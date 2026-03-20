@@ -278,18 +278,18 @@ input[type=file]{display:none;}
   <button class="main-tab" onclick="switchTab('p2')">🖨️ 印刷②：客層別契約率</button>
 </div>
 
-<div class="fbar" id="fb1" style="display:none">
+<!-- 共通月選択バー（全タブ共有・複数選択対応） -->
+<div class="fbar" id="fbar-global" style="display:none">
   <span class="flbl">📅 月選択</span>
-  <div class="fgrp" id="mb1"></div>
+  <span style="font-size:10px;color:var(--text-light);margin-right:4px;">複数選択で累計</span>
+  <div class="fgrp" id="mb-global"></div>
+  <span id="mb-label" style="font-size:11px;color:var(--blue);font-weight:600;margin-left:8px;"></span>
+  <button onclick="clearMonthSel()" style="margin-left:8px;padding:3px 10px;border:1px solid var(--border);border-radius:8px;background:white;color:var(--text-light);font-size:10px;cursor:pointer;">クリア</button>
 </div>
-<div class="fbar" id="fb2" style="display:none">
-  <span class="flbl">📅 月選択</span>
-  <div class="fgrp" id="mb2"></div>
-</div>
-<div class="fbar" id="fb3" style="display:none">
-  <span class="flbl">📅 月選択</span>
-  <div class="fgrp" id="mb3"></div>
-</div>
+<!-- 旧バー（互換用・非表示） -->
+<div id="fb1" style="display:none"></div>
+<div id="fb2" style="display:none"></div>
+<div id="fb3" style="display:none"></div>
 
 <!-- スライド1 -->
 <div class="page active" id="page-s1">
@@ -380,7 +380,7 @@ input[type=file]{display:none;}
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-const ST={pdf:{},ky:null,yo:[],s1m:new Date().getMonth()+1,s2m:null,s3m:new Date().getMonth()+1,p1m:new Date().getMonth()+1,p2m:new Date().getMonth()+1};
+const ST={pdf:{},ky:null,yo:[],s1m:new Date().getMonth()+1,s2m:null,s3m:new Date().getMonth()+1,p1m:new Date().getMonth()+1,p2m:new Date().getMonth()+1,mode1:'single',mode2:'single',r1from:1,r1to:1,r2from:'1月',r2to:'1月',selMonths:new Set(),currentTab:'s1'};
 
 function saveLS(){
   try{
@@ -403,19 +403,23 @@ function loadLS(){
     const fn3=localStorage.getItem('st_fn3');
     if(pd){
       const parsed=JSON.parse(pd);
-      // 旧形式（rows直下）は無視して新形式（月番号キー）のみ受け付ける
       if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)&&!parsed.rows){
         ST.pdf=parsed;
+        const months=Object.keys(ST.pdf).map(Number).sort((a,b)=>a-b);
+        ST.s1m=months[months.length-1];
+        ST.selMonths.add(ST.s1m);
         if(fn1){updateHmLabel(1,'✅ '+fn1,fn1);}
         document.getElementById('dz1').classList.add('loaded');rS1();rP1(ST.p1m);
       }
     }
     if(ky){ST.ky=JSON.parse(ky);
       if(fn2){document.getElementById('fn2').textContent=fn2;updateHmLabel(2,'✅ '+fn2,fn2);}
+      Object.keys(ST.ky).filter(k=>ST.ky[k]?.length).forEach(k=>ST.selMonths.add(parseInt(k)));
       document.getElementById('dz2').classList.add('loaded');rS2();rP2(ST.p2m);}
     if(yo){ST.yo=JSON.parse(yo);
       if(fn3){document.getElementById('fn3').textContent=fn3;updateHmLabel(3,'✅ '+fn3,fn3);}
       document.getElementById('dz3').classList.add('loaded');rS3();rP1(ST.p1m);}
+    renderMonthBar();
   }catch(e){console.warn('復元失敗',e);}
 }
 
@@ -430,13 +434,13 @@ function switchTab(id){
   document.querySelectorAll('.main-tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===id));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  document.getElementById('fb1').style.display=id==='s1'?'flex':'none';
-  document.getElementById('fb2').style.display=id==='s2'?'flex':'none';
-  document.getElementById('fb3').style.display=id==='s3'?'flex':'none';
-  if(id!=='s2') document.getElementById('fb2').style.display='none';
-  if(id!=='s3') document.getElementById('fb3').style.display='none';
-  if(id==='p1') rP1(ST.p1m||new Date().getMonth()+1);
-  if(id==='p2') rP2(ST.p2m||new Date().getMonth()+1);
+  ST.currentTab=id;
+  // 共通月バーの表示制御
+  const needsBar=['s1','s2','s3','p1','p2'].includes(id)&&(Object.keys(ST.pdf).length||ST.ky||ST.yo.length);
+  document.getElementById('fbar-global').style.display=needsBar?'flex':'none';
+  renderMonthBar();
+  if(id==='p1') renderCurrentTab();
+  if(id==='p2') renderCurrentTab();
 }
 function dov(e,id){e.preventDefault();document.getElementById(id).classList.add('dragover');}
 function dlv(id){document.getElementById(id).classList.remove('dragover');}
@@ -451,28 +455,25 @@ async function pf(files,type){
       const names=[];
       for(const f of files){
         const d=await parseZensha(f);
-        if(d){
-          ST.pdf[d.month]=d;
-          names.push(d.month+'月');
-          // 取り込んだ月に切り替え
-          ST.s1m=d.month;
-        }
+        if(d){ST.pdf[d.month]=d;names.push(d.month+'月');ST.selMonths.add(d.month);}
       }
-      // 取込済み全月をラベルに表示
       const allMonths=Object.keys(ST.pdf).map(Number).sort((a,b)=>a-b).map(m=>m+'月');
       updateHmLabel(1,'✅ '+allMonths.join('・')+'取込済',allMonths.join(', '));
       document.getElementById('dz1').classList.add('loaded');
-      rS1();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
+      ST.currentTab='s1';renderMonthBar();rS1();saveLS();
     }else if(type==='ky'){
       const f=files[0];document.getElementById('fn2').textContent=f.name;document.getElementById('dz2').classList.add('loaded');
       updateHmLabel(2,'✅ '+f.name,f.name);
-      ST.ky=await parseKy(f);rS2();if(ST.yo.length)rS3();rP1(ST.p1m||new Date().getMonth()+1);rP2(ST.p2m||new Date().getMonth()+1);saveLS();
+      ST.ky=await parseKy(f);
+      // 客層データの月をselMonthsに追加
+      Object.keys(ST.ky).filter(k=>ST.ky[k]?.length).forEach(k=>ST.selMonths.add(parseInt(k)));
+      renderMonthBar();rS2();if(ST.yo.length)rS3();rP1(ST.p1m||new Date().getMonth()+1);rP2(ST.p2m||new Date().getMonth()+1);saveLS();
     }else if(type==='yo'){
       const ns=[];
       for(const f of files){const d=await parseYo(f);if(d){ST.yo.push(d);ns.push(d.n);}}
       document.getElementById('fn3').textContent=ns.join(', ');document.getElementById('dz3').classList.add('loaded');
       updateHmLabel(3,'✅ '+ns.length+'店舗取込済',ns.join(', '));
-      rS3();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
+      renderMonthBar();rS3();rP1(ST.p1m||new Date().getMonth()+1);saveLS();
     }
   }catch(ex){console.error(ex);alert('エラー: '+ex.message);}
   hl();
@@ -568,21 +569,188 @@ async function parseYo(file){
   return {n:storeName,m:months};
 }
 
-function rS1(){
-  if(!Object.keys(ST.pdf).length)return;
-  document.getElementById('e1').style.display='none';document.getElementById('c1').style.display='block';
-  document.getElementById('fb1').style.display='flex';
-  const availMonths=Object.keys(ST.pdf).map(Number).sort((a,b)=>a-b);
-  if(!(ST.pdf[ST.s1m]||ST.pdf[String(ST.s1m)]))ST.s1m=availMonths[availMonths.length-1];
-  document.getElementById('mb1').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>{
-    const has=!!(ST.pdf[m]||ST.pdf[String(m)]);
-    return `<button class="fb ${m===ST.s1m?'active':''}" onclick="selM1(${m})" ${has?'':'disabled style="opacity:0.35;cursor:not-allowed"'}>${m}月</button>`;
+// --- 共通月選択（複数選択対応） ---
+function getAvailableMonths(){
+  const s=new Set();
+  Object.keys(ST.pdf).map(Number).forEach(m=>s.add(m));
+  if(ST.ky) Object.keys(ST.ky).filter(k=>ST.ky[k]?.length).forEach(k=>s.add(parseInt(k)));
+  return [...s].sort((a,b)=>a-b);
+}
+
+function renderMonthBar(){
+  const avail=getAvailableMonths();
+  if(!avail.length){document.getElementById('fbar-global').style.display='none';return;}
+  document.getElementById('fbar-global').style.display='flex';
+  // 選択月がなければ最新月を初期選択
+  if(!ST.selMonths.size) ST.selMonths.add(avail[avail.length-1]);
+  document.getElementById('mb-global').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>{
+    const has=avail.includes(m);
+    const sel=ST.selMonths.has(m);
+    return `<button class="fb ${sel?'active':''}" onclick="toggleMonth(${m})" ${has?'':'disabled style="opacity:0.3;cursor:not-allowed"'}>${m}月</button>`;
   }).join('');
-  const d=ST.pdf[ST.s1m]||ST.pdf[String(ST.s1m)];if(!d)return;
+  updateMonthLabel();
+}
+
+function toggleMonth(m){
+  if(ST.selMonths.has(m)){
+    if(ST.selMonths.size===1)return; // 最低1つは残す
+    ST.selMonths.delete(m);
+  }else{
+    ST.selMonths.add(m);
+  }
+  document.querySelectorAll('#mb-global .fb').forEach((b,i)=>{
+    b.classList.toggle('active',ST.selMonths.has(i+1));
+  });
+  updateMonthLabel();
+  renderCurrentTab();
+}
+
+function clearMonthSel(){
+  const avail=getAvailableMonths();
+  ST.selMonths.clear();
+  if(avail.length) ST.selMonths.add(avail[avail.length-1]);
+  renderMonthBar();
+  renderCurrentTab();
+}
+
+function updateMonthLabel(){
+  const sorted=[...ST.selMonths].sort((a,b)=>a-b);
+  const lbl=document.getElementById('mb-label');
+  if(sorted.length===1){lbl.textContent='';}
+  else{lbl.textContent=`${sorted[0]}〜${sorted[sorted.length-1]}月 累計（${sorted.length}ヶ月）`;}
+}
+
+function renderCurrentTab(){
+  const id=ST.currentTab||'s1';
+  const months=[...ST.selMonths].sort((a,b)=>a-b);
+  const single=months.length===1;
+  const m=months[0];
+  if(id==='s1'){
+    if(single){ST.s1m=m;rS1();}else{rS1Range(months);}
+  }else if(id==='s2'){
+    if(single){selM2(m+'月');}else{selM2Range(months);}
+  }else if(id==='s3'){
+    ST.s3m=m;rCards(m);
+  }else if(id==='p1'){
+    if(single){rP1(m);}else{rP1Range(months);}
+  }else if(id==='p2'){
+    if(single){rP2(m);}else{rP2Range(months);}
+  }
+}
+
+// 売上実績累計
+function rS1Range(months){
+  const d=getPdfRange(months[0],months[months.length-1]);
+  if(!d)return;
+  document.getElementById('e1').style.display='none';document.getElementById('c1').style.display='block';
   const rows=d.rows;
   const tb=rows.reduce((s,r)=>s+r.b,0),ta=rows.reduce((s,r)=>s+r.a,0),df=ta-tb,ar=tb>0?ta/tb:0;
   const ov=rows.filter(r=>r.b>0&&r.a>=r.b),un=rows.filter(r=>r.b>0&&r.a<r.b);
-  document.getElementById('hperiod').textContent=d.period||'';
+  document.getElementById('hperiod').textContent=d.period;
+  document.getElementById('kr1').innerHTML=`
+    <div class="kcard ${df>=0?'kgreen':'kred'}"><div class="kc-lbl">全社売上予算</div><div class="kc-num">${tb.toLocaleString()}<span class="kc-unit">万</span></div></div>
+    <div class="kcard ${df>=0?'kgreen':'kred'}"><div class="kc-lbl">全社実績（回収）</div><div class="kc-num">${ta.toLocaleString()}<span class="kc-unit">万</span></div><div class="kc-diff ${df>=0?'pos':'neg'}">${df>=0?'▲':'▼'} ${Math.abs(df).toLocaleString()}万円</div></div>
+    <div class="kcard ${ar>=1?'kgreen':ar>=0.9?'':'kred'}"><div class="kc-lbl">達成率</div><div class="kc-num">${(ar*100).toFixed(1)}<span class="kc-unit">%</span></div></div>
+    <div class="kcard kgreen"><div class="kc-lbl">達成店舗数</div><div class="kc-num">${ov.length}<span class="kc-unit">店</span></div><div class="kc-sub">/ ${rows.length}店舗</div></div>
+    <div class="kcard kred"><div class="kc-lbl">未達店舗数</div><div class="kc-num">${un.length}<span class="kc-unit">店</span></div></div>`;
+  const top=[...rows].filter(r=>r.b>0).sort((a,b)=>b.r-a.r).slice(0,3);
+  const bot=[...rows].filter(r=>r.b>0).sort((a,b)=>a.r-b.r).slice(0,3);
+  document.getElementById('hl1').innerHTML=`
+    <div><div class="hg-t">🏆 達成上位店舗</div><div class="hg-items">${top.map(s=>`<span class="hi hi-g">${s.nm} ${(s.r*100).toFixed(0)}%</span>`).join('')}</div></div>
+    <div><div class="hg-t">⚠️ 苦戦店舗</div><div class="hg-items">${bot.map(s=>`<span class="hi hi-r">${s.nm} ${(s.r*100).toFixed(0)}%</span>`).join('')}</div></div>`;
+  rChS([...rows].filter(r=>r.b>0).sort((a,b)=>b.r-a.r).slice(0,10));rChA(rows);
+  document.getElementById('oc').textContent=ov.length+'店';document.getElementById('uc').textContent=un.length+'店';
+  document.getElementById('tov').innerHTML=bTbl([...ov].sort((a,b)=>b.r-a.r),true);
+  document.getElementById('tun').innerHTML=bTbl([...un].sort((a,b)=>b.r-a.r),false);
+}
+
+// 客層別実績累計
+function selM2Range(months){
+  const stores=getKyRange(months[0],months[months.length-1]);
+  if(!stores||!stores.length)return;
+  document.getElementById('e2').style.display='none';document.getElementById('c2').style.display='block';
+  renderS2Data(stores,`${months[0]}〜${months[months.length-1]}月 累計`);
+}
+
+// 印刷①累計
+function rP1Range(months){rP1(months[0],months);}
+
+// 印刷②累計
+function rP2Range(months){
+  const stores=getKyRange(months[0],months[months.length-1]);
+  if(!stores||!stores.length)return;
+  document.getElementById('ep2').style.display='none';
+  document.getElementById('cp2').style.display='block';
+  const label=`${months[0]}〜${months[months.length-1]}月 累計`;
+  document.getElementById('mbp2').innerHTML='';
+  document.getElementById('ps2-title').textContent=label+' 店舗別 客層別純契約率一覧';
+  renderP2Table(stores,label);
+}
+
+// --- 旧モード関数（互換用） ---
+function setMode1(){}
+function setMode2(){}
+function applyRange1(){}
+function applyRange2(){}
+function selM2Range_old(){}
+
+// 売上累計データ生成
+function getPdfRange(from,to){
+  const months=Object.keys(ST.pdf).map(Number).filter(m=>m>=from&&m<=to);
+  if(!months.length)return null;
+  const allNm=[...new Set(months.flatMap(m=>(ST.pdf[m]||ST.pdf[String(m)])?.rows?.map(r=>r.nm)||[]))];
+  const rows=allNm.map(nm=>{
+    let b=0,a=0;
+    months.forEach(m=>{
+      const d=ST.pdf[m]||ST.pdf[String(m)];
+      const r=d?.rows?.find(r=>r.nm===nm);
+      if(r){b+=r.b;a+=r.a;}
+    });
+    return {nm,b,a,r:b>0?a/b:0};
+  });
+  const period=`${from}〜${to}月累計`;
+  return {rows,period,month:from};
+}
+
+// 客層累計データ生成
+function getKyRange(from,to){
+  const fi=parseInt(from),ti=parseInt(to);
+  const months=Object.keys(ST.ky).filter(k=>parseInt(k)>=fi&&parseInt(k)<=ti&&ST.ky[k].length>0);
+  if(!months.length)return null;
+  const allNm=[...new Set(months.flatMap(m=>ST.ky[m].map(s=>s.nm)))];
+  return allNm.map(nm=>{
+    let tn={s:0,k:0,sp:0,kp:0},sh={s:0,k:0,sp:0,kp:0},kz={s:0,k:0,sp:0,kp:0};
+    months.forEach(m=>{
+      const s=ST.ky[m].find(s=>s.nm===nm);
+      if(!s)return;
+      tn.s+=s.tn.s;tn.k+=s.tn.k;tn.sp+=s.tn.sp||0;tn.kp+=s.tn.kp||0;
+      sh.s+=s.sh.s;sh.k+=s.sh.k;sh.sp+=s.sh.sp||0;sh.kp+=s.sh.kp||0;
+      kz.s+=s.kz.s;kz.k+=s.kz.k;kz.sp+=s.kz.sp||0;kz.kp+=s.kz.kp||0;
+    });
+    const ts=tn.s+sh.s+kz.s,tk=tn.k+sh.k+kz.k;
+    const tsp=tn.sp+sh.sp+kz.sp,tkp=tn.kp+sh.kp+kz.kp;
+    return {nm,tn,sh,kz,ts,tk,tr:ts>0?tk/ts:0,tsp,tkp,trp:tsp>0?tkp/tsp:0};
+  });
+}
+
+function selM2Range(){
+  const stores=getKyRange(ST.r2from,ST.r2to);
+  if(!stores||!stores.length)return;
+  renderS2Data(stores,`${ST.r2from}〜${ST.r2to} 累計`);
+}
+
+function rS1(){
+  if(!Object.keys(ST.pdf).length)return;
+  document.getElementById('e1').style.display='none';document.getElementById('c1').style.display='block';
+  const months=[...ST.selMonths].sort((a,b)=>a-b);
+  if(months.length>1){rS1Range(months);return;}
+  const m=months[0]||ST.s1m;
+  ST.s1m=m;
+  const d=ST.pdf[m]||ST.pdf[String(m)];if(!d)return;
+  const periodLabel=d.period||'';
+  const tb=rows.reduce((s,r)=>s+r.b,0),ta=rows.reduce((s,r)=>s+r.a,0),df=ta-tb,ar=tb>0?ta/tb:0;
+  const ov=rows.filter(r=>r.b>0&&r.a>=r.b),un=rows.filter(r=>r.b>0&&r.a<r.b);
+  document.getElementById('hperiod').textContent=periodLabel;
   document.getElementById('kr1').innerHTML=`
     <div class="kcard ${df>=0?'kgreen':'kred'}"><div class="kc-lbl">全社売上予算</div><div class="kc-num">${tb.toLocaleString()}<span class="kc-unit">万</span></div></div>
     <div class="kcard ${df>=0?'kgreen':'kred'}"><div class="kc-lbl">全社実績（回収）</div><div class="kc-num">${ta.toLocaleString()}<span class="kc-unit">万</span></div><div class="kc-diff ${df>=0?'pos':'neg'}">${df>=0?'▲':'▼'} ${Math.abs(df).toLocaleString()}万円</div></div>
@@ -638,17 +806,30 @@ function rS2(){
   const d=ST.ky;if(!d)return;
   const av=Object.keys(d).filter(k=>d[k].length>0);if(!av.length)return;
   document.getElementById('e2').style.display='none';document.getElementById('c2').style.display='block';
-  const dm=av.includes(new Date().getMonth()+1+'月')?new Date().getMonth()+1+'月':av[av.length-1];
-  document.getElementById('mb2').innerHTML=av.map(m=>`<button class="fb ${m===dm?'active':''}" onclick="selM2('${m}')">${m}</button>`).join('');
-  selM2(dm);
+  const months=[...ST.selMonths].sort((a,b)=>a-b);
+  if(months.length>1){
+    selM2Range(months);
+  }else{
+    const m=months[0];
+    const key=m+'月';
+    if(d[key]){selM2(key);}
+    else{
+      // selMonthsにkyのデータがなければ最新月
+      const dm=av.includes(new Date().getMonth()+1+'月')?new Date().getMonth()+1+'月':av[av.length-1];
+      selM2(dm);
+    }
+  }
 }
 
 let CT,CS2;
-function selM1(m){if(!(ST.pdf[m]||ST.pdf[String(m)]))return;ST.s1m=m;document.querySelectorAll('#mb1 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m+'月'));rS1();}
+function selM1(m){if(!(ST.pdf[m]||ST.pdf[String(m)]))return;ST.s1m=m;ST.selMonths.clear();ST.selMonths.add(m);renderMonthBar();rS1();}
 function selM2(m){
   ST.s2m=m;
   document.querySelectorAll('#mb2 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m));
   const stores=ST.ky[m];if(!stores)return;
+  renderS2Data(stores,m);
+}
+function renderS2Data(stores,label){
   const ts=stores.reduce((s,r)=>s+r.ts,0),tk=stores.reduce((s,r)=>s+r.tk,0),tr=ts>0?tk/ts:0;
   const tsp=stores.reduce((s,r)=>s+r.tsp,0),tkp=stores.reduce((s,r)=>s+r.tkp,0),trp=tsp>0?tkp/tsp:0;
   const rd=tr-trp;
@@ -656,7 +837,7 @@ function selM2(m){
   const shi={s:stores.reduce((s,r)=>s+r.sh.s,0),k:stores.reduce((s,r)=>s+r.sh.k,0)};
   const kaz={s:stores.reduce((s,r)=>s+r.kz.s,0),k:stores.reduce((s,r)=>s+r.kz.k,0)};
   document.getElementById('kr2').innerHTML=`
-    <div class="kcard ${rd>=0?'kgreen':'kred'}"><div class="kc-lbl">全社純契約率（${m}）</div><div class="kc-num">${(tr*100).toFixed(1)}<span class="kc-unit">%</span></div><div class="kc-diff ${rd>=0?'pos':'neg'}">${rd>=0?'▲':'▼'} ${Math.abs(rd*100).toFixed(1)}%（昨対比）</div></div>
+    <div class="kcard ${rd>=0?'kgreen':'kred'}"><div class="kc-lbl">全社純契約率（${label}）</div><div class="kc-num">${(tr*100).toFixed(1)}<span class="kc-unit">%</span></div><div class="kc-diff ${rd>=0?'pos':'neg'}">${rd>=0?'▲':'▼'} ${Math.abs(rd*100).toFixed(1)}%（昨対比）</div></div>
     <div class="kcard"><div class="kc-lbl">単身 純契約率</div><div class="kc-num">${tan.s>0?(tan.k/tan.s*100).toFixed(1):'-'}<span class="kc-unit">%</span></div><div class="kc-sub">新規${tan.s}件 / 契約${tan.k}件</div></div>
     <div class="kcard"><div class="kc-lbl">新婚(同棲) 純契約率</div><div class="kc-num">${shi.s>0?(shi.k/shi.s*100).toFixed(1):'-'}<span class="kc-unit">%</span></div><div class="kc-sub">新規${shi.s}件 / 契約${shi.k}件</div></div>
     <div class="kcard"><div class="kc-lbl">家族 純契約率</div><div class="kc-num">${kaz.s>0?(kaz.k/kaz.s*100).toFixed(1):'-'}<span class="kc-unit">%</span></div><div class="kc-sub">新規${kaz.s}件 / 契約${kaz.k}件</div></div>
@@ -683,9 +864,13 @@ function selM2(m){
 function rS3(){
   if(!ST.yo.length)return;
   document.getElementById('e3').style.display='none';document.getElementById('c3').style.display='block';
-  document.getElementById('mb3').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>`<button class="fb ${m===ST.s3m?'active':''}" onclick="selM3(${m})">${m}月</button>`).join('');
-  rCards(ST.s3m);
+  const months=[...ST.selMonths].sort((a,b)=>a-b);
+  const m=months[0]||ST.s3m;
+  ST.s3m=m;
+  rCards(m);
 }
+
+function selM3(m){ST.s3m=m;ST.selMonths.clear();ST.selMonths.add(m);renderMonthBar();rCards(m);}
 
 function selM3(m){ST.s3m=m;document.querySelectorAll('#mb3 .fb').forEach(b=>b.classList.toggle('active',b.textContent===m+'月'));rCards(m);}
 
@@ -820,33 +1005,46 @@ function updateShareBtn(){
 }
 
 // --- 印刷①：目標vs実績 ---
-function rP1(month){
-  ST.p1m=month;
-  const m=Number(month);
-  const pdfData=ST.pdf[m]||ST.pdf[String(m)];
+function rP1(month, rangeMonths){
+  const months=rangeMonths||[...(ST.selMonths.size?ST.selMonths:[new Set([month])])].sort((a,b)=>a-b);
+  const m=Number(months[0]||month);
+  ST.p1m=m;
+  const isRange=months.length>1;
+  const pdfData=isRange?getPdfRange(months[0],months[months.length-1]):(ST.pdf[m]||ST.pdf[String(m)]);
   const hasYo=ST.yo.length>0;
   const hasKy=ST.ky&&Object.keys(ST.ky).length>0;
   if(!pdfData&&!hasYo&&!hasKy) return;
   document.getElementById('ep1').style.display='none';
   document.getElementById('cp1').style.display='block';
-  // 月選択ボタン（全月表示、取込済みのみ有効）
-  document.getElementById('mbp1').innerHTML=Array.from({length:12},(_,i)=>i+1).map(n=>{
-    const has=!!(ST.pdf[n]||ST.pdf[String(n)])||hasYo||hasKy;
-    return `<button class="fb ${n===m?'active':''}" onclick="selPM1(${n})" ${has?'':'disabled style="opacity:0.35;cursor:not-allowed"'}>${n}月</button>`;
-  }).join('');
-  document.getElementById('ps1-title').textContent=m+'月度 店舗別 目標・実績一覧';
+  document.getElementById('mbp1').innerHTML=''; // 共通バーに統合したので不要
+  const label=isRange?`${months[0]}〜${months[months.length-1]}月 累計`:`${m}月度`;
+  document.getElementById('ps1-title').textContent=label+' 店舗別 目標・実績一覧';
 
-  // PDFの実績データ（選択月のみ）
+  // PDFの実績データ
   const pdfMap={};
   if(pdfData) pdfData.rows.forEach(r=>pdfMap[r.nm]={b:r.b,a:r.a,r:r.r,nb:r.nb,na:r.na,ka:r.ka,ra:r.ra});
 
-  // 予算シートの目標データ
+  // 予算シートの目標データ（累計は合算）
   const yoMap={};
-  ST.yo.forEach(s=>{const md=s.m[month];if(md)yoMap[s.n]={tr:md.tr,ts:md.ts,tk:md.tk};});
+  ST.yo.forEach(s=>{
+    let ts=0,tk=0;
+    months.forEach(mn=>{const md=s.m[mn];if(md){ts+=md.ts;tk+=md.tk;}});
+    if(ts>0||tk>0) yoMap[s.n]={tr:ts>0?tk/ts:0,ts,tk};
+  });
 
-  // 客層分析の実績
+  // 客層分析の実績（累計は合算）
   const kyMap={};
-  if(ST.ky&&ST.ky[month+'月']) ST.ky[month+'月'].forEach(s=>kyMap[s.nm]={ts:s.ts,tk:s.tk,tr:s.tr});
+  months.forEach(mn=>{
+    const key=mn+'月';
+    if(ST.ky&&ST.ky[key]) ST.ky[key].forEach(s=>{
+      if(!kyMap[s.nm]) kyMap[s.nm]={ts:0,tk:0};
+      kyMap[s.nm].ts+=s.ts; kyMap[s.nm].tk+=s.tk;
+    });
+  });
+  Object.keys(kyMap).forEach(nm=>{
+    const d=kyMap[nm];
+    d.tr=d.ts>0?d.tk/d.ts:0;
+  });
 
   // 全店舗リスト
   const allStores=[...new Set([...STORES,...Object.keys(yoMap)])];
