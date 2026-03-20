@@ -245,7 +245,7 @@ input[type=file]{display:none;}
         ondrop="this.classList.remove('dragover');hfDrop(event,'zs')">
         <span class="hmenu-file-icon">📊</span>
         <div><div>全社数値表 Excel</div><span class="hmenu-file-name" id="hmfn1">複数月まとめてドロップOK</span></div>
-        <input type="file" accept=".xlsx,.xlsm,.xls" multiple onchange="hf(event,'zs');closeMenu();" style="display:none">
+        <input type="file" accept=".xlsx,.xlsm,.xls" multiple onchange="hf(event,'zs');" style="display:none">
       </label>
       <label class="hmenu-file-btn" id="hmlbl2"
         ondragover="event.preventDefault();this.classList.add('dragover')"
@@ -253,7 +253,7 @@ input[type=file]{display:none;}
         ondrop="this.classList.remove('dragover');hfDrop(event,'ky')">
         <span class="hmenu-file-icon">📊</span>
         <div><div>客層分析表 Excel</div><span class="hmenu-file-name" id="hmfn2">客層_2026.xlsm</span></div>
-        <input type="file" accept=".xlsx,.xlsm,.xls" onchange="hf(event,'ky');closeMenu();" style="display:none">
+        <input type="file" accept=".xlsx,.xlsm,.xls" onchange="hf(event,'ky');" style="display:none">
       </label>
       <label class="hmenu-file-btn" id="hmlbl3"
         ondragover="event.preventDefault();this.classList.add('dragover')"
@@ -261,7 +261,7 @@ input[type=file]{display:none;}
         ondrop="this.classList.remove('dragover');hfDrop(event,'yo')">
         <span class="hmenu-file-icon">🏪</span>
         <div><div>各店予算シート Excel</div><span class="hmenu-file-name" id="hmfn3">18店舗分（複数同時OK）</span></div>
-        <input type="file" accept=".xlsx,.xlsm,.xls" multiple onchange="hf(event,'yo');closeMenu();" style="display:none">
+        <input type="file" accept=".xlsx,.xlsm,.xls" multiple onchange="hf(event,'yo');" style="display:none">
       </label>
     </div>
     <div class="hmenu-section">
@@ -438,7 +438,6 @@ function loadLS(){
 
 window.addEventListener('load',()=>{
   if(!restoreFromURL()) loadLS();
-  updateShareBtn();
 });
 const STORES=['西宮北店','JR西宮店','塚口店','守口店','寝屋川店','枚方店','高槻店','大阪駅前店','はなてん店','京橋駅前店','淡路店','瓢箪山店','長田店','布施店','小阪店','長瀬店','八尾店','深井店'];
 
@@ -448,9 +447,6 @@ function switchTab(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   ST.currentTab=id;
-  // 共通月バーの表示制御
-  const needsBar=['s1','s2','s3','p1','p2'].includes(id)&&(Object.keys(ST.pdf).length||ST.ky||ST.yo.length);
-  document.getElementById('fbar-global').style.display=needsBar?'flex':'none';
   renderMonthBar();
   if(id==='p1') renderCurrentTab();
   if(id==='p2') renderCurrentTab();
@@ -458,7 +454,7 @@ function switchTab(id){
 function dov(e,id){e.preventDefault();document.getElementById(id).classList.add('dragover');}
 function dlv(id){document.getElementById(id).classList.remove('dragover');}
 function dp(e,t){e.preventDefault();['dz1','dz2','dz3'].forEach(id=>document.getElementById(id).classList.remove('dragover'));pf(e.dataTransfer.files,t);}
-function hfDrop(e,t){e.preventDefault();pf(e.dataTransfer.files,t);closeMenu();}
+function hfDrop(e,t){e.preventDefault();pf(e.dataTransfer.files,t);}
 function hf(e,t){pf(e.target.files,t);}
 
 async function pf(files,type){
@@ -592,9 +588,10 @@ function getAvailableMonths(){
 
 function renderMonthBar(){
   const avail=getAvailableMonths();
-  if(!avail.length){document.getElementById('fbar-global').style.display='none';return;}
-  document.getElementById('fbar-global').style.display='flex';
-  // 選択月がなければ最新月を初期選択
+  const bar=document.getElementById('fbar-global');
+  if(!bar)return;
+  if(!avail.length){bar.style.display='none';return;}
+  bar.style.display='flex';
   if(!ST.selMonths.size) ST.selMonths.add(avail[avail.length-1]);
   document.getElementById('mb-global').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>{
     const has=avail.includes(m);
@@ -761,6 +758,7 @@ function rS1(){
   ST.s1m=m;
   const d=ST.pdf[m]||ST.pdf[String(m)];if(!d)return;
   const periodLabel=d.period||'';
+  const rows=d.rows;
   const tb=rows.reduce((s,r)=>s+r.b,0),ta=rows.reduce((s,r)=>s+r.a,0),df=ta-tb,ar=tb>0?ta/tb:0;
   const ov=rows.filter(r=>r.b>0&&r.a>=r.b),un=rows.filter(r=>r.b>0&&r.a<r.b);
   document.getElementById('hperiod').textContent=periodLabel;
