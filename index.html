@@ -172,6 +172,11 @@ input[type=file]{display:none;}
 .ps-hl-item.b{background:var(--blue);color:white;}
 .ps-hl-item.r{background:var(--red);color:white;}
 
+/* メモ欄 */
+.ps-memo-wrap{margin-top:8px;border-top:1px solid var(--border);padding-top:6px;}
+.ps-memo-label{font-size:9px;font-weight:700;color:var(--text-mid);margin-bottom:4px;}
+.ps-memo-input{width:100%;min-height:60px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:'Noto Sans JP',sans-serif;font-size:9px;color:var(--text);resize:vertical;line-height:1.6;}
+.ps-memo-input:focus{outline:none;border-color:var(--blue-light);}
 @media print{
   header,.main-tabs,.fbar,.print-btn,.print-fbar,
   #page-s1,#page-s2,#page-s3{display:none!important;}
@@ -179,6 +184,7 @@ input[type=file]{display:none;}
   #page-p1,#page-p2{display:block!important;}
   .print-sheet{box-shadow:none;margin:0;page-break-after:always;width:100%;max-height:none;overflow:visible;}
   body{background:white;}
+  .ps-memo-input{border:1px solid #ccc;resize:none;}
 }
 /* ハンバーガーメニュー */
 .hmenu-btn{display:flex;flex-direction:column;gap:4px;padding:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35);border-radius:6px;cursor:pointer;margin-left:12px;}
@@ -365,6 +371,11 @@ input[type=file]{display:none;}
         </div>
         <div class="ps-wrap"><table class="ps-table" id="pt2"></table></div>
         <div class="ps-highlight" id="ps2-hl"></div>
+        <!-- フリーメモ欄 -->
+        <div class="ps-memo-wrap">
+          <div class="ps-memo-label">📝 所見・メモ</div>
+          <textarea id="ps2-memo" class="ps-memo-input" placeholder="所見・コメントを入力してください（印刷時にも反映されます）" oninput="saveMemo()"></textarea>
+        </div>
       </div>
     </div>
   </div>
@@ -381,6 +392,16 @@ input[type=file]{display:none;}
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const ST={pdf:{},ky:null,yo:[],s1m:new Date().getMonth()+1,s2m:null,s3m:new Date().getMonth()+1,p1m:new Date().getMonth()+1,p2m:new Date().getMonth()+1,mode1:'single',mode2:'single',r1from:1,r1to:1,r2from:'1月',r2to:'1月',selMonths:new Set(),currentTab:'s1'};
+
+function saveMemo(){
+  try{localStorage.setItem('st_memo2',document.getElementById('ps2-memo').value);}catch(e){}
+}
+function loadMemo(){
+  try{
+    const m=localStorage.getItem('st_memo2');
+    if(m) document.getElementById('ps2-memo').value=m;
+  }catch(e){}
+}
 
 function saveLS(){
   try{
@@ -438,6 +459,7 @@ function loadLS(){
 
 window.addEventListener('load',()=>{
   if(!restoreFromURL()) loadLS();
+  loadMemo();
 });
 const STORES=['西宮北店','JR西宮店','塚口店','守口店','寝屋川店','枚方店','高槻店','大阪駅前店','はなてん店','京橋駅前店','淡路店','瓢箪山店','長田店','布施店','小阪店','長瀬店','八尾店','深井店'];
 
