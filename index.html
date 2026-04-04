@@ -207,13 +207,31 @@ input[type=file]{display:none;}
 .p3-badge-un{font-size:7px;padding:1px 5px;border-radius:8px;background:#ffebee;color:#c62828;font-weight:700;}
 
 @media print{
-  header,.main-tabs,.fbar,.print-btn,.print-fbar,
-  #page-s1,#page-s2,#page-s3{display:none!important;}
-  .page.active{display:none!important;}
-  #page-p1,#page-p2,#page-p3{display:block!important;}
-  .print-sheet{box-shadow:none;margin:0;page-break-after:always;width:100%;max-height:none;overflow:visible;}
+  header,.main-tabs,.fbar,.print-fbar,
+  .hmenu-overlay,.hmenu-panel,.lbar,.share-toast{display:none!important;}
+  .print-btn{display:none!important;}
   body{background:white;}
+  .page{display:none!important;}
+  body.print-s1 #page-s1{display:block!important;}
+  body.print-s1 #page-s1 .page-body{padding:6mm 8mm!important;}
+  body.print-s1 #page-s1 .cw{height:180px;}
+  body.print-s1 #page-s1 .cws{height:160px;}
+  body.print-s1 #page-s1 .card{page-break-inside:avoid;}
+  body.print-s2 #page-s2{display:block!important;}
+  body.print-s2 #page-s2 .page-body{padding:6mm 8mm!important;}
+  body.print-s2 #page-s2 .cw{height:180px;}
+  body.print-s2 #page-s2 .cws{height:160px;}
+  body.print-s2 #page-s2 .card{page-break-inside:avoid;}
+  body.print-s3 #page-s3{display:block!important;}
+  body.print-s3 #page-s3 .page-body{padding:6mm 8mm!important;}
+  body.print-s3 #page-s3 .sc{page-break-inside:avoid;}
+  body.print-p1 #page-p1{display:block!important;}
+  body.print-p2 #page-p2{display:block!important;}
+  body.print-p3 #page-p3{display:block!important;}
+  .print-sheet{box-shadow:none!important;margin:0!important;padding:5mm 7mm!important;width:297mm!important;min-height:auto!important;max-height:none!important;overflow:visible!important;page-break-after:always;border-radius:0!important;}
+  .print-area{padding:0!important;max-width:none!important;}
   .ps-memo-input{border:1px solid #ccc;resize:none;}
+  .p3-sc{page-break-inside:avoid;}
 }
 /* ハンバーガーメニュー */
 .hmenu-btn{display:flex;flex-direction:column;gap:4px;padding:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35);border-radius:6px;cursor:pointer;margin-left:12px;}
@@ -332,6 +350,9 @@ input[type=file]{display:none;}
   <div class="page-body">
     <div id="e1" class="empty"><div class="empty-i">📊</div><div class="empty-t">右上の≡メニューから全社数値表Excelを取り込んでください</div></div>
     <div id="c1" style="display:none">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+        <button class="print-btn" onclick="window.print()">🖨️ 印刷する（A4横）</button>
+      </div>
       <div class="kpi-row" id="kr1"></div>
       <div class="hl-box" id="hl1"></div>
       <div class="g2">
@@ -349,6 +370,9 @@ input[type=file]{display:none;}
   <div class="page-body">
     <div id="e2" class="empty"><div class="empty-i">📊</div><div class="empty-t">客層分析表ExcelをドロップしてExcelの月タブを選択してください</div></div>
     <div id="c2" style="display:none">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+        <button class="print-btn" onclick="window.print()">🖨️ 印刷する（A4横）</button>
+      </div>
       <div class="kpi-row" id="kr2"></div>
       <div class="hl-box" id="hl2"></div>
       <div class="g2">
@@ -522,6 +546,7 @@ function loadLS(){
 }
 
 window.addEventListener('load',()=>{
+  document.body.classList.add('print-s1');
   if(!restoreFromURL()) loadLS();
   loadMemo();loadMemo3();
 });
@@ -533,6 +558,9 @@ function switchTab(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   ST.currentTab=id;
+  // 印刷用：bodyにどのタブか記録
+  document.body.className=document.body.className.replace(/\bprint-\S+/g,'').trim();
+  document.body.classList.add('print-'+id);
   renderMonthBar();
   if(id==='p1') renderCurrentTab();
   if(id==='p2') renderCurrentTab();
