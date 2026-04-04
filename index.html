@@ -178,60 +178,107 @@ input[type=file]{display:none;}
 .ps-memo-input{width:100%;min-height:60px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:'Noto Sans JP',sans-serif;font-size:9px;color:var(--text);resize:vertical;line-height:1.6;}
 .ps-memo-input:focus{outline:none;border-color:var(--blue-light);}
 /* 印刷③：店舗別実績カード */
-.p3-area-section{margin-bottom:6px;}
-.p3-area-header{display:flex;align-items:center;gap:8px;margin-bottom:5px;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;}
-.p3-store-grid{display:grid;gap:6px;}
+.p3-area-section{margin-bottom:5px;}
+.p3-area-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:3px 8px;border-radius:5px;font-size:9px;font-weight:700;}
+.p3-store-grid{display:grid;gap:5px;}
 .p3-store-grid.cols-2{grid-template-columns:repeat(2,1fr);}
 .p3-store-grid.cols-3{grid-template-columns:repeat(3,1fr);}
 .p3-store-grid.cols-4{grid-template-columns:repeat(4,1fr);}
 .p3-store-grid.cols-5{grid-template-columns:repeat(5,1fr);}
-.p3-sc{border:1px solid #d0e4f7;border-radius:6px;padding:7px 9px;background:white;border-top:3px solid #42a5f5;}
+.p3-sc{border:1px solid #d0e4f7;border-radius:5px;padding:5px 7px;background:white;border-top:2px solid #42a5f5;}
 .p3-sc.sov{border-top-color:#2e7d32;}
 .p3-sc.sun{border-top-color:#c62828;}
 .p3-sc.sne{border-top-color:#f5a623;}
 .p3-sc.sno{border-top-color:#42a5f5;}
-.p3-sc-nm{font-size:10px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:4px;}
-.p3-sc-tl{font-size:8px;color:#7a99ba;margin-bottom:1px;}
-.p3-sc-tv{font-size:14px;font-weight:900;color:#1565c0;margin-bottom:4px;}
-.p3-sc-bw{display:flex;align-items:center;gap:5px;margin-bottom:2px;}
-.p3-sc-bg{flex:1;height:5px;background:#e3f2fd;border-radius:3px;overflow:hidden;}
-.p3-sc-b{height:100%;border-radius:3px;}
+.p3-sc-nm{font-size:9px;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:3px;}
+.p3-sc-tl{font-size:7px;color:#7a99ba;margin-bottom:1px;}
+.p3-sc-tv{font-size:12px;font-weight:900;color:#1565c0;margin-bottom:2px;}
+.p3-sc-bw{display:flex;align-items:center;gap:4px;margin-bottom:1px;}
+.p3-sc-bg{flex:1;height:4px;background:#e3f2fd;border-radius:2px;overflow:hidden;}
+.p3-sc-b{height:100%;border-radius:2px;}
 .p3-sc-b.bov{background:linear-gradient(90deg,#2e7d32,#66bb6a);}
 .p3-sc-b.bne{background:linear-gradient(90deg,#f5a623,#ffca28);}
 .p3-sc-b.bun{background:linear-gradient(90deg,#c62828,#ef5350);}
-.p3-sc-rv{font-size:10px;font-weight:700;min-width:36px;text-align:right;}
-.p3-sc-ac{font-size:7px;color:#7a99ba;margin-bottom:3px;}
-.p3-sc-ft{font-size:7px;color:#7a99ba;border-top:1px solid #d0e4f7;padding-top:3px;margin-top:3px;}
-.p3-badge-ov{font-size:7px;padding:1px 5px;border-radius:8px;background:#e8f5e9;color:#2e7d32;font-weight:700;}
-.p3-badge-ne{font-size:7px;padding:1px 5px;border-radius:8px;background:#fff8e1;color:#f5a623;font-weight:700;}
-.p3-badge-un{font-size:7px;padding:1px 5px;border-radius:8px;background:#ffebee;color:#c62828;font-weight:700;}
+.p3-sc-rv{font-size:9px;font-weight:700;min-width:32px;text-align:right;}
+.p3-sc-ac{font-size:7px;color:#7a99ba;margin-bottom:2px;}
+.p3-sc-ft{font-size:7px;color:#7a99ba;border-top:1px solid #d0e4f7;padding-top:2px;margin-top:2px;}
+.p3-badge-ov{font-size:7px;padding:1px 4px;border-radius:7px;background:#e8f5e9;color:#2e7d32;font-weight:700;}
+.p3-badge-ne{font-size:7px;padding:1px 4px;border-radius:7px;background:#fff8e1;color:#f5a623;font-weight:700;}
+.p3-badge-un{font-size:7px;padding:1px 4px;border-radius:7px;background:#ffebee;color:#c62828;font-weight:700;}
 
 @media print{
+  @page{size:A4 landscape;margin:6mm 8mm;}
   header,.main-tabs,.fbar,.print-fbar,
   .hmenu-overlay,.hmenu-panel,.lbar,.share-toast{display:none!important;}
   .print-btn{display:none!important;}
-  body{background:white;}
+  body{background:white;font-size:9px;}
   .page{display:none!important;}
+
+  /* 売上実績 */
   body.print-s1 #page-s1{display:block!important;}
-  body.print-s1 #page-s1 .page-body{padding:6mm 8mm!important;}
-  body.print-s1 #page-s1 .cw{height:180px;}
-  body.print-s1 #page-s1 .cws{height:160px;}
-  body.print-s1 #page-s1 .card{page-break-inside:avoid;}
+  body.print-s1 #page-s1 .page-body{padding:0!important;max-width:none!important;}
+  body.print-s1 #page-s1 .kpi-row{grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px;}
+  body.print-s1 #page-s1 .kcard{padding:8px 10px;}
+  body.print-s1 #page-s1 .kc-num{font-size:18px;}
+  body.print-s1 #page-s1 .hl-box{padding:8px 12px;margin-bottom:8px;}
+  body.print-s1 #page-s1 .g2{gap:8px;margin-bottom:8px;}
+  body.print-s1 #page-s1 .cw{height:150px;}
+  body.print-s1 #page-s1 .cws{height:130px;}
+  body.print-s1 #page-s1 .card{padding:10px 12px;page-break-inside:avoid;}
+  body.print-s1 #page-s1 .ytable{font-size:8px;}
+  body.print-s1 #page-s1 .ytable th{font-size:8px;padding:4px 6px;}
+  body.print-s1 #page-s1 .ytable td{padding:3px 6px;}
+
+  /* 客層別実績 */
   body.print-s2 #page-s2{display:block!important;}
-  body.print-s2 #page-s2 .page-body{padding:6mm 8mm!important;}
-  body.print-s2 #page-s2 .cw{height:180px;}
-  body.print-s2 #page-s2 .cws{height:160px;}
-  body.print-s2 #page-s2 .card{page-break-inside:avoid;}
+  body.print-s2 #page-s2 .page-body{padding:0!important;max-width:none!important;}
+  body.print-s2 #page-s2 .kpi-row{grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px;}
+  body.print-s2 #page-s2 .kcard{padding:8px 10px;}
+  body.print-s2 #page-s2 .kc-num{font-size:18px;}
+  body.print-s2 #page-s2 .hl-box{padding:8px 12px;margin-bottom:8px;}
+  body.print-s2 #page-s2 .g2{gap:8px;margin-bottom:8px;}
+  body.print-s2 #page-s2 .cw{height:140px;}
+  body.print-s2 #page-s2 .cws{height:120px;}
+  body.print-s2 #page-s2 .card{padding:10px 12px;page-break-inside:avoid;}
+  body.print-s2 #page-s2 .ytable{font-size:8px;}
+  body.print-s2 #page-s2 .ytable th{font-size:8px;padding:4px 6px;}
+  body.print-s2 #page-s2 .ytable td{padding:3px 6px;}
+
+  /* 店舗別実績 */
   body.print-s3 #page-s3{display:block!important;}
-  body.print-s3 #page-s3 .page-body{padding:6mm 8mm!important;}
-  body.print-s3 #page-s3 .sc{page-break-inside:avoid;}
+  body.print-s3 #page-s3 .page-body{padding:0!important;max-width:none!important;}
+  body.print-s3 #page-s3 .sc{page-break-inside:avoid;font-size:8px;}
+
+  /* 印刷① */
   body.print-p1 #page-p1{display:block!important;}
+  /* 印刷② */
   body.print-p2 #page-p2{display:block!important;}
+  /* 印刷③ */
   body.print-p3 #page-p3{display:block!important;}
-  .print-sheet{box-shadow:none!important;margin:0!important;padding:5mm 7mm!important;width:297mm!important;min-height:auto!important;max-height:none!important;overflow:visible!important;page-break-after:always;border-radius:0!important;}
+
+  .print-sheet{
+    box-shadow:none!important;margin:0!important;padding:0!important;
+    width:100%!important;min-height:auto!important;max-height:none!important;
+    overflow:visible!important;border-radius:0!important;
+  }
   .print-area{padding:0!important;max-width:none!important;}
+  .ps-header{margin-bottom:4px;padding-bottom:3px;}
   .ps-memo-input{border:1px solid #ccc;resize:none;}
   .p3-sc{page-break-inside:avoid;}
+
+  /* 印刷③：カードをA4横1枚に詰める */
+  body.print-p3 .p3-area-section{margin-bottom:4px;}
+  body.print-p3 .p3-area-header{padding:2px 6px;font-size:8px;margin-bottom:3px;}
+  body.print-p3 .p3-store-grid{gap:3px;}
+  body.print-p3 .p3-sc{padding:4px 5px;}
+  body.print-p3 .p3-sc-nm{font-size:8px;margin-bottom:1px;}
+  body.print-p3 .p3-sc-tl{font-size:6px;}
+  body.print-p3 .p3-sc-tv{font-size:11px;margin-bottom:2px;}
+  body.print-p3 .p3-sc-rv{font-size:8px;}
+  body.print-p3 .p3-sc-ac{font-size:6px;}
+  body.print-p3 .p3-sc-ft{font-size:6px;padding-top:1px;margin-top:1px;}
+  body.print-p3 .ps-memo-wrap{margin-top:4px;padding-top:4px;}
+  body.print-p3 .ps-memo-input{min-height:30px;font-size:8px;}
 }
 /* ハンバーガーメニュー */
 .hmenu-btn{display:flex;flex-direction:column;gap:4px;padding:8px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35);border-radius:6px;cursor:pointer;margin-left:12px;}
