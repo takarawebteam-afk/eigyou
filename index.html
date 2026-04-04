@@ -177,11 +177,40 @@ input[type=file]{display:none;}
 .ps-memo-label{font-size:9px;font-weight:700;color:var(--text-mid);margin-bottom:4px;}
 .ps-memo-input{width:100%;min-height:60px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:'Noto Sans JP',sans-serif;font-size:9px;color:var(--text);resize:vertical;line-height:1.6;}
 .ps-memo-input:focus{outline:none;border-color:var(--blue-light);}
+/* 印刷③：店舗別実績カード */
+.p3-area-section{margin-bottom:6px;}
+.p3-area-header{display:flex;align-items:center;gap:8px;margin-bottom:5px;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;}
+.p3-store-grid{display:grid;gap:6px;}
+.p3-store-grid.cols-2{grid-template-columns:repeat(2,1fr);}
+.p3-store-grid.cols-3{grid-template-columns:repeat(3,1fr);}
+.p3-store-grid.cols-4{grid-template-columns:repeat(4,1fr);}
+.p3-store-grid.cols-5{grid-template-columns:repeat(5,1fr);}
+.p3-sc{border:1px solid #d0e4f7;border-radius:6px;padding:7px 9px;background:white;border-top:3px solid #42a5f5;}
+.p3-sc.sov{border-top-color:#2e7d32;}
+.p3-sc.sun{border-top-color:#c62828;}
+.p3-sc.sne{border-top-color:#f5a623;}
+.p3-sc.sno{border-top-color:#42a5f5;}
+.p3-sc-nm{font-size:10px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:4px;}
+.p3-sc-tl{font-size:8px;color:#7a99ba;margin-bottom:1px;}
+.p3-sc-tv{font-size:14px;font-weight:900;color:#1565c0;margin-bottom:4px;}
+.p3-sc-bw{display:flex;align-items:center;gap:5px;margin-bottom:2px;}
+.p3-sc-bg{flex:1;height:5px;background:#e3f2fd;border-radius:3px;overflow:hidden;}
+.p3-sc-b{height:100%;border-radius:3px;}
+.p3-sc-b.bov{background:linear-gradient(90deg,#2e7d32,#66bb6a);}
+.p3-sc-b.bne{background:linear-gradient(90deg,#f5a623,#ffca28);}
+.p3-sc-b.bun{background:linear-gradient(90deg,#c62828,#ef5350);}
+.p3-sc-rv{font-size:10px;font-weight:700;min-width:36px;text-align:right;}
+.p3-sc-ac{font-size:7px;color:#7a99ba;margin-bottom:3px;}
+.p3-sc-ft{font-size:7px;color:#7a99ba;border-top:1px solid #d0e4f7;padding-top:3px;margin-top:3px;}
+.p3-badge-ov{font-size:7px;padding:1px 5px;border-radius:8px;background:#e8f5e9;color:#2e7d32;font-weight:700;}
+.p3-badge-ne{font-size:7px;padding:1px 5px;border-radius:8px;background:#fff8e1;color:#f5a623;font-weight:700;}
+.p3-badge-un{font-size:7px;padding:1px 5px;border-radius:8px;background:#ffebee;color:#c62828;font-weight:700;}
+
 @media print{
   header,.main-tabs,.fbar,.print-btn,.print-fbar,
   #page-s1,#page-s2,#page-s3{display:none!important;}
   .page.active{display:none!important;}
-  #page-p1,#page-p2{display:block!important;}
+  #page-p1,#page-p2,#page-p3{display:block!important;}
   .print-sheet{box-shadow:none;margin:0;page-break-after:always;width:100%;max-height:none;overflow:visible;}
   body{background:white;}
   .ps-memo-input{border:1px solid #ccc;resize:none;}
@@ -282,6 +311,7 @@ input[type=file]{display:none;}
   <button class="main-tab" onclick="switchTab('s3')">🏪 店舗別実績</button>
   <button class="main-tab" onclick="switchTab('p1')">🖨️ 印刷①：目標vs実績</button>
   <button class="main-tab" onclick="switchTab('p2')">🖨️ 印刷②：客層別契約率</button>
+  <button class="main-tab" onclick="switchTab('p3')">🖨️ 印刷③：店舗別実績</button>
 </div>
 
 <!-- 共通月選択バー（全タブ共有・複数選択対応） -->
@@ -389,9 +419,34 @@ input[type=file]{display:none;}
   </div>
 </div>
 
+<!-- 印刷③：店舗別実績 -->
+<div class="page" id="page-p3">
+  <div class="print-area">
+    <div class="print-fbar">
+      <span class="flbl">📅 月選択</span>
+      <div class="fgrp" id="mbp3"></div>
+      <button class="print-btn" onclick="window.print()">🖨️ 印刷する（A4横）</button>
+    </div>
+    <div id="ep3" class="empty"><div class="empty-i">🏪</div><div class="empty-t">各店予算シートExcelをドロップすると印刷用シートが表示されます</div></div>
+    <div id="cp3" style="display:none">
+      <div class="print-sheet" id="ps3">
+        <div class="ps-header">
+          <div class="ps-title" id="ps3-title">●月度 店舗別 純契約率目標・実績一覧</div>
+          <div class="ps-period">仲介営業部</div>
+        </div>
+        <div id="ps3-body"></div>
+        <div class="ps-memo-wrap">
+          <div class="ps-memo-label">📝 所見・メモ</div>
+          <textarea id="ps3-memo" class="ps-memo-input" placeholder="所見・コメントを入力してください（印刷時にも反映されます）" oninput="saveMemo3()"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-const ST={pdf:{},ky:null,yo:[],s1m:new Date().getMonth()+1,s2m:null,s3m:new Date().getMonth()+1,p1m:new Date().getMonth()+1,p2m:new Date().getMonth()+1,mode1:'single',mode2:'single',r1from:1,r1to:1,r2from:'1月',r2to:'1月',selMonths:new Set(),currentTab:'s1'};
+const ST={pdf:{},ky:null,yo:[],s1m:new Date().getMonth()+1,s2m:null,s3m:new Date().getMonth()+1,p1m:new Date().getMonth()+1,p2m:new Date().getMonth()+1,p3m:new Date().getMonth()+1,mode1:'single',mode2:'single',r1from:1,r1to:1,r2from:'1月',r2to:'1月',selMonths:new Set(),currentTab:'s1'};
 
 function saveMemo(){
   try{localStorage.setItem('st_memo2',document.getElementById('ps2-memo').value);}catch(e){}
@@ -400,6 +455,15 @@ function loadMemo(){
   try{
     const m=localStorage.getItem('st_memo2');
     if(m) document.getElementById('ps2-memo').value=m;
+  }catch(e){}
+}
+function saveMemo3(){
+  try{localStorage.setItem('st_memo3',document.getElementById('ps3-memo').value);}catch(e){}
+}
+function loadMemo3(){
+  try{
+    const m=localStorage.getItem('st_memo3');
+    if(m) document.getElementById('ps3-memo').value=m;
   }catch(e){}
 }
 
@@ -451,7 +515,7 @@ function loadLS(){
       ST.yo=JSON.parse(yo);
       if(fn3) updateHmLabel(3,'✅ '+fn3,fn3);
       document.getElementById('dz3').classList.add('loaded');
-      rS3();rP1(ST.p1m);
+      rS3();rP1(ST.p1m);rP3(ST.p3m);
     }
     renderMonthBar();
   }catch(e){console.warn('復元失敗',e);}
@@ -459,12 +523,12 @@ function loadLS(){
 
 window.addEventListener('load',()=>{
   if(!restoreFromURL()) loadLS();
-  loadMemo();
+  loadMemo();loadMemo3();
 });
 const STORES=['西宮北店','JR西宮店','塚口店','守口店','寝屋川店','枚方店','高槻店','大阪駅前店','はなてん店','京橋駅前店','淡路店','瓢箪山店','長田店','布施店','小阪店','長瀬店','八尾店','深井店'];
 
 function switchTab(id){
-  const tabs=['s1','s2','s3','p1','p2'];
+  const tabs=['s1','s2','s3','p1','p2','p3'];
   document.querySelectorAll('.main-tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===id));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
@@ -472,6 +536,7 @@ function switchTab(id){
   renderMonthBar();
   if(id==='p1') renderCurrentTab();
   if(id==='p2') renderCurrentTab();
+  if(id==='p3') rP3(ST.p3m);
 }
 function dov(e,id){e.preventDefault();document.getElementById(id).classList.add('dragover');}
 function dlv(id){document.getElementById(id).classList.remove('dragover');}
@@ -1020,6 +1085,7 @@ function restoreFromURL(){
     if(ST.yo.length)rS3();
     rP1(ST.p1m||new Date().getMonth()+1);
     rP2(ST.p2m||new Date().getMonth()+1);
+    rP3(ST.p3m||new Date().getMonth()+1);
     showToast('🔗 共有リンクからデータを復元しました！');
     // ハッシュをURLからは消さない（再共有できるように）
     return true;
@@ -1308,6 +1374,50 @@ function rP2(month){
 }
 
 function selPM2(m){ST.p2m=m;rP2(m);}
+
+// --- 印刷③：店舗別実績 ---
+function rP3(month){
+  ST.p3m=month;
+  if(!ST.yo.length) return;
+  document.getElementById('ep3').style.display='none';
+  document.getElementById('cp3').style.display='block';
+  document.getElementById('mbp3').innerHTML=Array.from({length:12},(_,i)=>i+1).map(m=>`<button class="fb ${m===month?'active':''}" onclick="selPM3(${m})">${m}月</button>`).join('');
+  document.getElementById('ps3-title').textContent=month+'月度 店舗別 純契約率目標・実績一覧';
+
+  const html=AREAS.map(area=>{
+    const areaStores=area.stores.map(nm=>ST.yo.find(s=>s.n===nm||nm.includes(s.n)||s.n.includes(nm))).filter(Boolean);
+    if(!areaStores.length) return '';
+    const cards=areaStores.map(s=>{
+      const md=s.m[month]; if(!md) return '';
+      const tgt=md.tr;
+      const km=ST.ky?ST.ky[month+'月']:null;
+      const ks=km?km.find(k=>k.nm===s.n||s.n.includes(k.nm)||k.nm.includes(s.n)):null;
+      const act=ks?ks.tr:null;
+      const ach=act!==null&&tgt>0?act/tgt:null;
+      const isOv=ach!==null&&ach>=1, isNe=ach!==null&&ach>=0.8&&ach<1;
+      const cc=act===null?'sno':isOv?'sov':isNe?'sne':'sun';
+      const bw=act!==null&&tgt>0?Math.min(act/tgt*100,100):0;
+      const bc=isOv?'bov':isNe?'bne':'bun';
+      const rc=isOv?'var(--green)':isNe?'var(--gold)':'var(--red)';
+      const badge=ach!==null?(isOv?'<span class="p3-badge-ov">✓達成</span>':isNe?'<span class="p3-badge-ne">惜しい</span>':'<span class="p3-badge-un">未達</span>'):'';
+      return `<div class="p3-sc ${cc}">
+        <div class="p3-sc-nm">${s.n}${badge}</div>
+        <div class="p3-sc-tl">純契約率目標（${month}月）</div>
+        <div class="p3-sc-tv">${tgt>0?(tgt*100).toFixed(1)+'%':'未設定'}</div>
+        ${act!==null?`<div class="p3-sc-tl">実績</div><div class="p3-sc-bw"><div class="p3-sc-bg"><div class="p3-sc-b ${bc}" style="width:${bw}%"></div></div><div class="p3-sc-rv" style="color:${rc}">${(act*100).toFixed(1)}%</div></div><div class="p3-sc-ac">目標達成率: <strong style="color:${rc}">${(ach*100).toFixed(1)}%</strong>　新規${ks.ts}件/契約${ks.tk}件</div>`:`<div style="font-size:8px;color:var(--text-light)">← 客層分析表で実績表示</div>`}
+        <div class="p3-sc-ft">目標: 新規${md.ts}件 / 契約${md.tk}件</div>
+      </div>`;
+    }).join('');
+    if(!cards.trim()) return '';
+    const colsMap={1:'cols-2',2:'cols-2',3:'cols-3',4:'cols-4',5:'cols-5'};
+    return `<div class="p3-area-section">
+      <div class="p3-area-header ${area.cls}">${area.label}<span class="area-count">（${areaStores.length}店舗）</span></div>
+      <div class="p3-store-grid ${colsMap[areaStores.length]||'cols-3'}">${cards}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('ps3-body').innerHTML=html;
+}
+function selPM3(m){ST.p3m=m;rP3(m);}
 </script>
 </body>
 </html>
