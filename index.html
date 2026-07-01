@@ -657,6 +657,10 @@ async function parseZensha(file){
   const ws=wb.Sheets['一般'];
   if(!ws) throw new Error('「一般」タブが見つかりません');
   const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  const sheetData=['一般','自社','紹介'].map(name=>{
+    const sheet=wb.Sheets[name];
+    return sheet?XLSX.utils.sheet_to_json(sheet,{header:1,defval:null}):[];
+  });
   const sv=v=>(v==null||v==='-'||typeof v==='string')?0:Number(v);
 
   // H1から月・期間テキストを取得
@@ -671,20 +675,23 @@ async function parseZensha(file){
   // 【修正】行番号を丸暗記せず、A列の店名でその店の行を探す。
   // こうすると閉店で行がずれても、店が増えても崩れない。STORES に載っている店だけを拾う。
   const rows=STORES.map(nm=>{
-    const row=data.find(rw=>rw&&String(rw[0]||'').trim()===nm)||[];
-    const b=sv(row[2]);
-    const a=sv(row[3]);
-    const nb=sv(row[22]);
-    const na=sv(row[23]);
-    const ka=sv(row[38]);
-    const ra=sv(row[40]);
-    return {nm,b,a,r:b>0?a/b:0,nb,na,ka,ra};
+    const sum=sheetData.reduce((acc,sheet)=>{
+      const row=sheet.find(rw=>rw&&String(rw[0]||'').trim()===nm)||[];
+      acc.b+=sv(row[2]);
+      acc.a+=sv(row[3]);
+      acc.nb+=sv(row[22]);
+      acc.na+=sv(row[23]);
+      acc.ka+=sv(row[38]);
+      return acc;
+    },{b:0,a:0,nb:0,na:0,ka:0});
+    return {nm,b:sum.b,a:sum.a,r:sum.b>0?sum.a/sum.b:0,nb:sum.nb,na:sum.na,ka:sum.ka,ra:sum.na>0?sum.ka/sum.na:0};
   });
 
   // 【修正】合計は数値表の合計欄の位置に依存させず、取り込んだ各店を足し上げて算出する。
   const total=rows.reduce((t,x)=>({
-    b:t.b+x.b, a:t.a+x.a, nb:t.nb+x.nb, na:t.na+x.na, ka:t.ka+x.ka, ra:t.ra+x.ra
+    b:t.b+x.b, a:t.a+x.a, nb:t.nb+x.nb, na:t.na+x.na, ka:t.ka+x.ka, ra:0
   }),{b:0,a:0,nb:0,na:0,ka:0,ra:0});
+  total.ra=total.na>0?total.ka/total.na:0;
 
   return {rows,total,period:periodText,month};
 }
