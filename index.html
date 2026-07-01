@@ -597,7 +597,7 @@ window.addEventListener('load',()=>{
   if(!restoreFromURL()) loadLS();
   loadMemo();loadMemo3();
 });
-const STORES=['西宮北店','JR西宮店','塚口店','守口店','寝屋川店','枚方店','高槻店','大阪駅前店','はなてん店','京橋駅前店','淡路店','瓢箪山店','長田店','布施店','小阪店','長瀬店','八尾店','深井店'];
+const STORES=['西宮北店','JR西宮店','塚口店','守口店','寝屋川店','枚方店','高槻店','大阪駅前店','はなてん店','京橋駅前店','淡路店','瓢箪山店','長田店','布施店','長瀬店','八尾店'];
 
 function switchTab(id){
   const tabs=['s1','s2','s3','p1','p2','p3'];
@@ -668,16 +668,10 @@ async function parseZensha(file){
   const mMatch=src.match(/(\d{1,2})月/);
   const month=mMatch?parseInt(mMatch[1]):new Date().getMonth()+1;
 
-  const STORE_ROWS=[
-    {nm:'西宮北店', r:8},{nm:'JR西宮店', r:9},{nm:'塚口店', r:10},
-    {nm:'守口店', r:15},{nm:'寝屋川店', r:16},{nm:'枚方店', r:17},{nm:'高槻店', r:18},
-    {nm:'大阪駅前店', r:22},{nm:'はなてん店', r:23},{nm:'京橋駅前店', r:24},{nm:'淡路店', r:25},
-    {nm:'瓢箪山店', r:29},{nm:'長田店', r:30},{nm:'布施店', r:31},{nm:'小阪店', r:32},{nm:'長瀬店', r:33},
-    {nm:'八尾店', r:36},{nm:'深井店', r:37},
-  ];
-
-  const rows=STORE_ROWS.map(({nm,r})=>{
-    const row=data[r-1]||[];
+  // 【修正】行番号を丸暗記せず、A列の店名でその店の行を探す。
+  // こうすると閉店で行がずれても、店が増えても崩れない。STORES に載っている店だけを拾う。
+  const rows=STORES.map(nm=>{
+    const row=data.find(rw=>rw&&String(rw[0]||'').trim()===nm)||[];
     const b=sv(row[2]);
     const a=sv(row[3]);
     const nb=sv(row[22]);
@@ -687,12 +681,10 @@ async function parseZensha(file){
     return {nm,b,a,r:b>0?a/b:0,nb,na,ka,ra};
   });
 
-  const totalRow=data[72]||[];
-  const total={
-    b:sv(totalRow[2]),a:sv(totalRow[3]),
-    nb:sv(totalRow[22]),na:sv(totalRow[23]),
-    ka:sv(totalRow[38]),ra:sv(totalRow[40]),
-  };
+  // 【修正】合計は数値表の合計欄の位置に依存させず、取り込んだ各店を足し上げて算出する。
+  const total=rows.reduce((t,x)=>({
+    b:t.b+x.b, a:t.a+x.a, nb:t.nb+x.nb, na:t.na+x.na, ka:t.ka+x.ka, ra:t.ra+x.ra
+  }),{b:0,a:0,nb:0,na:0,ka:0,ra:0});
 
   return {rows,total,period:periodText,month};
 }
@@ -960,7 +952,7 @@ const SHORT_NM={
   '寝屋川店':'寝屋川','高槻店':'高槻','守口店':'守口','枚方店':'枚方',
   '大阪駅前店':'大阪','はなてん店':'放出','京橋駅前店':'京橋','淡路店':'淡路',
   '布施店':'布施','長田店':'長田','瓢箪山店':'瓢箪','長瀬店':'長瀬',
-  '小阪店':'小阪','八尾店':'八尾','深井店':'深井','新大阪営業所':'新大阪',
+  '八尾店':'八尾','新大阪営業所':'新大阪',
 };
 function sn(nm){return SHORT_NM[nm]||nm;}
 
@@ -1051,8 +1043,8 @@ const AREAS=[
   {key:'hyogo', label:'🔵 兵庫エリア', cls:'area-hyogo', stores:['西宮北店','JR西宮店','塚口店']},
   {key:'keihoku', label:'🟢 京北エリア', cls:'area-keihoku', stores:['寝屋川店','高槻店','守口店','枚方店']},
   {key:'chuo', label:'🟡 中央エリア', cls:'area-chuo', stores:['大阪駅前店','京橋駅前店','はなてん店','淡路店']},
-  {key:'higashi', label:'🔴 東エリア', cls:'area-higashi', stores:['布施店','瓢箪山店','長瀬店','小阪店','長田店']},
-  {key:'minami', label:'🟣 南エリア', cls:'area-minami', stores:['八尾店','深井店']},
+  {key:'higashi', label:'🔴 東エリア', cls:'area-higashi', stores:['布施店','瓢箪山店','長瀬店','長田店']},
+  {key:'minami', label:'🟣 南エリア', cls:'area-minami', stores:['八尾店']},
 ];
 
 function makeCard(store,month){
